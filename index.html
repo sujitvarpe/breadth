@@ -1,0 +1,520 @@
+<title>sujitvarpe/breadth</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+:root {
+  --page:      #f3f6f6;
+  --card:      #ffffff;
+  --ink:       #101a1c;
+  --ink-2:     #52646a;
+  --muted:     #7d8c91;
+  --grid:      #e3e9ea;
+  --border:    rgba(16,26,28,.12);
+  --bull:      #1a7f37;
+  --bear:      #d03b3b;
+  --neutral:   #b08800;
+  --accent:    #0e7c86;
+  --bull-wash: rgba(26,127,55,.10);
+  --bear-wash: rgba(208,59,59,.10);
+  --neut-wash: rgba(176,136,0,.12);
+  --tooltip-bg: #101a1c;
+  --tooltip-ink: #f3f6f6;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page:      #0b0f12;
+    --card:      #161b22;
+    --ink:       #e8eef1;
+    --ink-2:     #9fb0b8;
+    --muted:     #6e7f88;
+    --grid:      #232c33;
+    --border:    rgba(232,238,241,.10);
+    --bull:      #57d977;
+    --bear:      #d03b3b;
+    --neutral:   #d29922;
+    --accent:    #26c6da;
+    --bull-wash: rgba(87,217,119,.10);
+    --bear-wash: rgba(208,59,59,.14);
+    --neut-wash: rgba(210,153,34,.12);
+    --tooltip-bg: #e8eef1;
+    --tooltip-ink: #101a1c;
+  }
+}
+:root[data-theme="light"] {
+  --page:      #f3f6f6;
+  --card:      #ffffff;
+  --ink:       #101a1c;
+  --ink-2:     #52646a;
+  --muted:     #7d8c91;
+  --grid:      #e3e9ea;
+  --border:    rgba(16,26,28,.12);
+  --bull:      #1a7f37;
+  --bear:      #d03b3b;
+  --neutral:   #b08800;
+  --accent:    #0e7c86;
+  --bull-wash: rgba(26,127,55,.10);
+  --bear-wash: rgba(208,59,59,.10);
+  --neut-wash: rgba(176,136,0,.12);
+  --tooltip-bg: #101a1c;
+  --tooltip-ink: #f3f6f6;
+}
+:root[data-theme="dark"] {
+  --page:      #0b0f12;
+  --card:      #161b22;
+  --ink:       #e8eef1;
+  --ink-2:     #9fb0b8;
+  --muted:     #6e7f88;
+  --grid:      #232c33;
+  --border:    rgba(232,238,241,.10);
+  --bull:      #57d977;
+  --bear:      #d03b3b;
+  --neutral:   #d29922;
+  --accent:    #26c6da;
+  --bull-wash: rgba(87,217,119,.10);
+  --bear-wash: rgba(208,59,59,.14);
+  --neut-wash: rgba(210,153,34,.12);
+  --tooltip-bg: #e8eef1;
+  --tooltip-ink: #101a1c;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--page);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  margin: 0;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 980px; margin: 0 auto; padding: 28px 20px 48px; display: flex; flex-direction: column; gap: 20px; }
+
+.display { font-family: "Avenir Next Condensed", "Helvetica Neue Condensed", "Arial Narrow", system-ui, sans-serif; }
+.mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+.eyebrow { font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+
+/* Header */
+header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+header h1 { font-size: 22px; margin: 2px 0 0; font-weight: 700; letter-spacing: .01em; }
+.hdr-meta { color: var(--muted); font-size: 12.5px; }
+.hdr-meta a { color: var(--accent); text-decoration: none; }
+.hdr-meta a:hover, .hdr-meta a:focus-visible { text-decoration: underline; }
+
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px 22px; }
+
+/* Hero verdict */
+.hero { display: grid; grid-template-columns: minmax(230px, 1.2fr) minmax(240px, 1fr); gap: 22px 36px; align-items: center; }
+@media (max-width: 680px) { .hero { grid-template-columns: 1fr; } }
+.verdict {
+  font-size: clamp(44px, 8.5vw, 72px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .015em;
+  line-height: .95;
+  margin: 4px 0 10px;
+  text-wrap: balance;
+}
+.hero-summary { color: var(--ink-2); font-size: 14px; max-width: 42ch; }
+@media (prefers-reduced-motion: no-preference) {
+  .hero-reveal { animation: rise .5s ease-out both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+}
+
+/* Score rail */
+.rail-block { display: flex; flex-direction: column; gap: 8px; }
+.rail-caps { display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.rail-caps .bear-cap { color: var(--bear); }
+.rail-caps .bull-cap { color: var(--bull); }
+.rail { position: relative; height: 14px; border-radius: 7px; overflow: visible;
+  background: linear-gradient(90deg, var(--bear-wash) 0%, var(--bear-wash) 33%, var(--neut-wash) 45%, var(--neut-wash) 55%, var(--bull-wash) 67%, var(--bull-wash) 100%);
+  border: 1px solid var(--border); }
+.rail-zero { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--muted); opacity: .6; }
+.rail-marker { position: absolute; top: 50%; width: 22px; height: 22px; border-radius: 50%;
+  transform: translate(-50%, -50%); border: 3px solid var(--card); box-shadow: 0 0 0 1px var(--border); }
+.rail-score { font-size: 13px; font-weight: 700; }
+.rail-ticks { display: flex; justify-content: space-between; color: var(--muted); font-size: 10.5px; }
+
+/* Component chips */
+.chips { display: flex; gap: 10px; flex-wrap: wrap; }
+.chip { flex: 1 1 150px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; }
+.chip .c-label { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.chip .c-value { font-size: 15px; font-weight: 700; margin-top: 2px; }
+.chip .c-pts { font-size: 11px; margin-top: 1px; }
+
+/* Stat tiles */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.tile { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+.tile .t-label { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.tile .t-value { font-size: 22px; font-weight: 700; margin-top: 3px; }
+.tile .t-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+/* Sections + charts */
+.sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.sec-title { font-size: 14px; font-weight: 700; }
+.sec-note { font-size: 12px; color: var(--muted); }
+.range-row { display: flex; gap: 6px; }
+.range-btn { font: inherit; font-size: 12px; padding: 3px 12px; border-radius: 14px; cursor: pointer;
+  border: 1px solid var(--border); background: transparent; color: var(--ink-2); }
+.range-btn:hover { background: var(--grid); }
+.range-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.range-btn.on { background: var(--accent); border-color: var(--accent); color: var(--card); font-weight: 700; }
+.chart-box { position: relative; }
+.chart-box svg { display: block; width: 100%; height: auto; }
+.tooltip { position: absolute; pointer-events: none; background: var(--tooltip-bg); color: var(--tooltip-ink);
+  font-size: 12px; border-radius: 6px; padding: 6px 10px; line-height: 1.45; white-space: nowrap;
+  opacity: 0; transition: opacity .12s; z-index: 5; box-shadow: 0 2px 10px rgba(0,0,0,.25); }
+.tooltip.show { opacity: 1; }
+
+/* Table */
+.tbl-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th { text-align: right; color: var(--muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em;
+  padding: 7px 10px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th:first-child, th:nth-child(2) { text-align: left; }
+td { padding: 6px 10px; border-bottom: 1px solid var(--grid); text-align: right; white-space: nowrap; }
+td:first-child, td:nth-child(2) { text-align: left; }
+tr:last-child td { border-bottom: none; }
+.pill { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 12px; padding: 1px 10px; }
+
+footer { color: var(--muted); font-size: 11.5px; text-align: center; line-height: 1.7; }
+footer a { color: var(--accent); text-decoration: none; }
+footer a:hover, footer a:focus-visible { text-decoration: underline; }
+</style>
+
+<div class="wrap">
+
+<header>
+  <div>
+    <div class="eyebrow display">Stockbee Market Monitor</div>
+    <h1>Market Breadth</h1>
+  </div>
+  <div class="hdr-meta">
+    Data through <strong id="hdr-date" class="mono"></strong> ·
+    source: <a href="https://stockbee.blogspot.com/p/mm.html" target="_blank" rel="noopener">stockbee.blogspot.com/p/mm.html</a>
+  </div>
+</header>
+
+<div class="card hero hero-reveal">
+  <div>
+    <div class="eyebrow">Current bias</div>
+    <div class="verdict display" id="verdict"></div>
+    <div class="hero-summary" id="hero-summary"></div>
+  </div>
+  <div class="rail-block">
+    <div class="rail-caps display"><span class="bear-cap">&#9660; Bearish</span><span class="rail-score mono" id="rail-score"></span><span class="bull-cap">Bullish &#9650;</span></div>
+    <div class="rail">
+      <div class="rail-zero"></div>
+      <div class="rail-marker" id="rail-marker"></div>
+    </div>
+    <div class="rail-ticks mono"><span>-10</span><span>0</span><span>+10</span></div>
+  </div>
+</div>
+
+<div class="chips" id="chips"></div>
+
+<div class="tiles" id="tiles"></div>
+
+<div class="card">
+  <div class="sec-head">
+    <div>
+      <div class="sec-title">Bias score, day by day</div>
+      <div class="sec-note">5-component breadth score, -10 to +10. Bars above zero = bullish days.</div>
+    </div>
+    <div class="range-row" id="range-row" role="group" aria-label="Date range">
+      <button class="range-btn" data-days="30">30D</button>
+      <button class="range-btn" data-days="90">90D</button>
+      <button class="range-btn on" data-days="0">All</button>
+    </div>
+  </div>
+  <div class="chart-box" id="score-box">
+    <svg id="score-svg" viewBox="0 0 940 220" role="img" aria-label="Daily market bias score bar chart"></svg>
+    <div class="tooltip" id="score-tip"></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="sec-head">
+    <div>
+      <div class="sec-title">T2108 — % of stocks above their 40-day average</div>
+      <div class="sec-note">Below 30 marks washouts that precede bottoms; above 70 runs hot.</div>
+    </div>
+  </div>
+  <div class="chart-box" id="t2108-box">
+    <svg id="t2108-svg" viewBox="0 0 940 220" role="img" aria-label="T2108 line chart"></svg>
+    <div class="tooltip" id="t2108-tip"></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="sec-head">
+    <div class="sec-title">Last 30 sessions</div>
+    <div class="sec-note">Up/Dn = stocks moving &plusmn;4% or more that day</div>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th scope="col">Date</th><th scope="col">Bias</th><th scope="col">Score</th>
+        <th scope="col">Up 4%+</th><th scope="col">Dn 4%+</th>
+        <th scope="col">5-Day</th><th scope="col">10-Day</th>
+        <th scope="col">T2108</th><th scope="col">S&amp;P 500</th>
+      </tr></thead>
+      <tbody id="tbl-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<footer>
+  Breadth data: <a href="https://stockbee.blogspot.com/p/mm.html" target="_blank" rel="noopener">Stockbee Market Monitor</a>
+  (Worden common-stock universe, published ~1h after the US close).<br>
+  Bias score: 5-day ratio &middot; 10-day ratio &middot; T2108 &middot; quarterly 25% movers &middot; monthly 25% movers, each -2&hellip;+2.
+  Snapshot generated <span id="foot-generated" class="mono"></span>. Not investment advice.
+</footer>
+
+</div>
+
+<script>
+const DATA = {"data_date": "2026-07-06", "computed_at": "2026-07-07 07:31 UTC", "condition": {"condition": "Slightly Bullish", "score": 2, "color": "#7ce38b", "summary": "2 bullish vs 0 bearish signals \u2014 slight edge to buyers", "components": {"5d_ratio": {"label": "5-Day Ratio", "value": "1.47", "score": 1}, "10d_ratio": {"label": "10-Day Ratio", "value": "1.36", "score": 1}, "t2108": {"label": "T2108 >40MA", "value": "52.0%", "score": 0}, "quarter": {"label": "Quarter", "value": "\u21911705/\u21931078", "score": 0}, "month": {"label": "Month", "value": "\u2191253/\u2193178", "score": 0}}}, "latest": {"up_4pct_today": 233, "down_4pct_today": 155, "ratio_5d": 1.47, "ratio_10d": 1.36, "q_up25": 1705, "q_down25": 1078, "m_up25": 253, "m_down25": 178, "m_up50": 36, "m_down50": 39, "d34_up13": 2248, "d34_down13": 1517, "t2108": 52.0, "universe_count": 6500, "spy_close": 7537.98}, "history": [{"date": "2025-12-18", "bias": "Bullish", "bias_score": 5, "up_4pct_today": 227, "down_4pct_today": 148, "ratio_5d": 1.53, "ratio_10d": 1.53, "t2108": 50.29, "spy_close": 6774.76}, {"date": "2025-12-19", "bias": "Bullish", "bias_score": 6, "up_4pct_today": 412, "down_4pct_today": 175, "ratio_5d": 1.98, "ratio_10d": 1.98, "t2108": 49.67, "spy_close": 6834.5}, {"date": "2025-12-22", "bias": "Bullish", "bias_score": 6, "up_4pct_today": 186, "down_4pct_today": 84, "ratio_5d": 2.03, "ratio_10d": 2.03, "t2108": 51.78, "spy_close": 6878.49}, {"date": "2025-12-23", "bias": "Bullish", "bias_score": 5, "up_4pct_today": 100, "down_4pct_today": 199, "ratio_5d": 1.53, "ratio_10d": 1.53, "t2108": 50.36, "spy_close": 6909.79}, {"date": "2025-12-24", "bias": "Bullish", "bias_score": 5, "up_4pct_today": 78, "down_4pct_today": 38, "ratio_5d": 1.56, "ratio_10d": 1.56, "t2108": 52.38, "spy_close": 6932.05}, {"date": "2025-12-26", "bias": "Slightly Bullish", "bias_score": 2, "up_4pct_today": 109, "down_4pct_today": 219, "ratio_5d": 1.24, "ratio_10d": 1.29, "t2108": 52.71, "spy_close": 6929.94}, {"date": "2025-12-29", "bias": "Neutral", "bias_score": -1, "up_4pct_today": 109, "down_4pct_today": 391, "ratio_5d": 0.63, "ratio_10d": 0.97, "t2108": 52.57, "spy_close": 6905.74}, {"date": "2025-12-30", "bias": "Slightly Bearish", "bias_score": -2, "up_4pct_today": 121, "down_4pct_today": 164, "ratio_5d": 0.51, "ratio_10d": 0.95, "t2108": 51.55, "spy_close": 6896.24}, {"date": "2025-12-31", "bias": "Slightly Bearish", "bias_score": -2, "up_4pct_today": 133, "down_4pct_today": 145, "ratio_5d": 0.57, "ratio_10d": 0.94, "t2108": 46.27, "spy_close": 6845.5}, {"date": "2026-01-02", "bias": "Neutral", "bias_score": 0, "up_4pct_today": 432, "down_4pct_today": 188, "ratio_5d": 0.82, "ratio_10d": 1.09, "t2108": 50.24, "spy_close": 6858.47}, {"date": "2026-01-05", "bias": "Slightly Bullish", "bias_score": 2, "up_4pct_today": 659, "down_4pct_today": 163, "ratio_5d": 1.38, "ratio_10d": 1.32, "t2108": 54.78, "spy_close": 6902.05}, {"date": "2026-01-06", "bias": "Slightly Bullish", "bias_score": 3, "up_4pct_today": 439, "down_4pct_today": 137, "ratio_5d": 2.24, "ratio_10d": 1.37, "t2108": 57.35, "spy_close": 6944.82}, {"date": "2026-01-07", "bias": "Slightly Bullish", "bias_score": 3, "up_4pct_today": 309, "down_4pct_today": 170, "ratio_5d": 2.46, "ratio_10d": 1.37, "t2108": 53.59, "spy_close": 6920.93}, {"date": "2026-01-08", "bias": "Bullish", "bias_score": 5, "up_4pct_today": 430, "down_4pct_today": 170, "ratio_5d": 2.74, "ratio_10d": 1.58, "t2108": 60.77, "spy_close": 6921.46}, {"date": "2026-01-09", "bias": "Bullish", "bias_score": 5, "up_4pct_today": 296, "down_4pct_today": 166, "ratio_5d": 2.65, "ratio_10d": 1.59, "t2108": 61.96, "spy_close": 6966.28}, {"date": "2026-01-12", "bias": "Bullish", "bias_score": 5, "up_4pct_today": 354, "down_4pct_today": 180, "ratio_5d": 2.22, "ratio_10d": 1.75, "t2108": 61.83, "spy_close": 6977.27}, {"date": "2026-01-13", "bias": "Bullish", "bias_score": 6, "up_4pct_today": 223, "down_4pct_today": 245, "ratio_5d": 1.73, "ratio_10d": 1.97, "t2108": 62.21, "spy_close": 6963.74}, {"date": "2026-01-14", "bias": "Bullish", "bias_score": 6, "up_4pct_today": 308, "down_4pct_today": 155, "ratio_5d": 1.76, "ratio_10d": 2.08, "t2108": 65.02, "spy_close": 6926.6}, {"date": "2026-01-15", "bias": "Bullish", "bias_score": 6, "up_4pct_today": 288, "down_4pct_today": 190, "ratio_5d": 1.57, "ratio_10d": 2.12, "t2108": 66.92, "spy_close": 6944.47}, {"date": "2026-01-16", "bias": "Bullish", "bias_score": 5, "up_4pct_today": 232, "down_4pct_today": 211, "ratio_5d": 1.43, "ratio_10d": 1.98, "t2108": 65.27, "spy_close": 6940.01}, {"date": "2026-01-20", "bias": "Slightly Bullish", "bias_score": 4, "up_4pct_today": 229, "down_4pct_today": 447, "ratio_5d": 1.03, "ratio_10d": 1.5, "t2108": 58.64, "spy_close": 6796.86}, {"date": "2026-01-21", "bias": "Bullish", "bias_score": 5, "up_4pct_today": 536, "down_4pct_today": 140, "ratio_5d": 1.39, "ratio_10d": 1.55, "t2108": 64.54, "spy_close": 6875.62}, {"date": "2026-01-22", "bias": "Bullish", "bias_score": 6, "up_4pct_today": 438, "down_4pct_today": 83, "ratio_5d": 1.61, "ratio_10d": 1.68, "t2108": 64.89, "spy_close": 6913.35}, {"date": "2026-01-23", "bias": "Bullish", "bias_score": 6, "up_4pct_today": 178, "down_4pct_today": 189, "ratio_5d": 1.51, "ratio_10d": 1.54, "t2108": 61.48, "spy_close": 6915.61}, {"date": "2026-01-26", "bias": "Slightly Bullish", "bias_score": 4, "up_4pct_today": 159, "down_4pct_today": 307, "ratio_5d": 1.32, "ratio_10d": 1.37, "t2108": 61.22, "spy_close": 6950.23}, {"date": "2026-01-27", "bias": "Bullish", "bias_score": 5, "up_4pct_today": 253, "down_4pct_today": 166, "ratio_5d": 1.77, "ratio_10d": 1.33, "t2108": 59.34, "spy_close": 6978.6}, {"date": "2026-01-28", "bias": "Slightly Bullish", "bias_score": 2, "up_4pct_today": 174, "down_4pct_today": 309, "ratio_5d": 1.14, "ratio_10d": 1.27, "t2108": 55.4, "spy_close": 6978.03}, {"date": "2026-01-29", "bias": "Neutral", "bias_score": 1, "up_4pct_today": 211, "down_4pct_today": 411, "ratio_5d": 0.71, "ratio_10d": 1.1, "t2108": 58.0, "spy_close": 6969.01}, {"date": "2026-01-30", "bias": "Slightly Bearish", "bias_score": -2, "up_4pct_today": 152, "down_4pct_today": 458, "ratio_5d": 0.57, "ratio_10d": 0.94, "t2108": 55.37, "spy_close": 6939.03}, {"date": "2026-02-02", "bias": "Neutral", "bias_score": -1, "up_4pct_today": 274, "down_4pct_today": 200, "ratio_5d": 0.69, "ratio_10d": 0.96, "t2108": 55.42, "spy_close": 6976.44}, {"date": "2026-02-03", "bias": "Slightly Bearish", "bias_score": -2, "up_4pct_today": 326, "down_4pct_today": 537, "ratio_5d": 0.59, "ratio_10d": 0.96, "t2108": 55.88, "spy_close": 6917.81}, {"date": "2026-02-04", "bias": "Slightly Bearish", "bias_score": -4, "up_4pct_today": 279, "down_4pct_today": 505, "ratio_5d": 0.59, "ratio_10d": 0.77, "t2108": 57.83, "spy_close": 6882.72}, {"date": "2026-02-05", "bias": "Bearish", "bias_score": -5, "up_4pct_today": 98, "down_4pct_today": 748, "ratio_5d": 0.46, "ratio_10d": 0.55, "t2108": 53.47, "spy_close": 6798.4}, {"date": "2026-02-06", "bias": "Neutral", "bias_score": -1, "up_4pct_today": 638, "down_4pct_today": 81, "ratio_5d": 0.78, "ratio_10d": 0.69, "t2108": 59.91, "spy_close": 6932.3}, {"date": "2026-02-09", "bias": "Neutral", "bias_score": 0, "up_4pct_today": 296, "down_4pct_today": 135, "ratio_5d": 0.82, "ratio_10d": 0.76, "t2108": 59.96, "spy_close": 6964.82}, {"date": "2026-02-10", "bias": "Neutral", "bias_score": -1, "up_4pct_today": 214, "down_4pct_today": 189, "ratio_5d": 0.92, "ratio_10d": 0.75, "t2108": 61.58, "spy_close": 6941.81}, {"date": "2026-02-11", "bias": "Neutral", "bias_score": -1, "up_4pct_today": 227, "down_4pct_today": 461, "ratio_5d": 0.91, "ratio_10d": 0.73, "t2108": 58.25, "spy_close": 6941.47}, {"date": "2026-02-12", "bias": "Slightly Bearish", "bias_score": -2, "up_4pct_today": 121, "down_4pct_today": 674, "ratio_5d": 0.97, "ratio_10d": 0.66, "t2108": 53.85, "spy_close": 6832.76}, {"date": "2026-02-13", "bias": "Slightly Bearish", "bias_score": -3, "up_4pct_today": 288, "down_4pct_today": 116, "ratio_5d": 0.73, "ratio_10d": 0.76, "t2108": 55.47, "spy_close": 6836.17}, {"date": "2026-02-17", "bias": "Slightly Bearish", "bias_score": -3, "up_4pct_today": 220, "down_4pct_today": 250, "ratio_5d": 0.63, "ratio_10d": 0.73, "t2108": 55.91, "spy_close": 6843.22}, {"date": "2026-02-18", "bias": "Slightly Bearish", "bias_score": -2, "up_4pct_today": 319, "down_4pct_today": 107, "ratio_5d": 0.73, "ratio_10d": 0.83, "t2108": 57.22, "spy_close": 6881.31}, {"date": "2026-02-19", "bias": "Neutral", "bias_score": -1, "up_4pct_today": 288, "down_4pct_today": 145, "ratio_5d": 0.96, "ratio_10d": 0.93, "t2108": 55.61, "spy_close": 6861.89}, {"date": "2026-02-20", "bias": "Neutral", "bias_score": 1, "up_4pct_today": 189, "down_4pct_today": 236, "ratio_5d": 1.53, "ratio_10d": 1.17, "t2108": 56.25, "spy_close": 6909.51}, {"date": "2026-02-23", "bias": "Slightly Bearish", "bias_score": -2, "up_4pct_today": 142, "down_4pct_today": 590, "ratio_5d": 0.87, "ratio_10d": 0.79, "t2108": 50.38, "spy_close": 6837.75}, {"date": "2026-02-24", "bias": "Neutral", "bias_score": -1, "up_4pct_today": 383, "down_4pct_today": 97, "ratio_5d": 1.12, "ratio_10d": 0.83, "t2108": 51.11, "spy_close": 6890.07}, {"date": "2026-02-25", "bias": "Neutral", "bias_score": -1, "up_4pct_today": 404, "down_4pct_today": 141, "ratio_5d": 1.16, "ratio_10d": 0.92, "t2108": 52.27, "spy_close": 6946.13}, {"date": "2026-02-26", "bias": "Neutral", "bias_score": 1, "up_4pct_today": 414, "down_4pct_today": 174, "ratio_5d": 1.24, "ratio_10d": 1.09, "t2108": 54.38, "spy_close": 6908.86}, {"date": "2026-02-27", "bias": "Neutral", "bias_score": 0, "up_4pct_today": 201, "down_4pct_today": 483, "ratio_5d": 1.04, "ratio_10d": 1.22, "t2108": 48.89, "spy_close": 6878.88}, {"date": "2026-03-02", "bias": "Slightly Bullish", "bias_score": 3, "up_4pct_today": 355, "down_4pct_today": 176, "ratio_5d": 1.64, "ratio_10d": 1.22, "t2108": 49.48, "spy_close": 6881.62}, {"date": "2026-03-03", "bias": "Neutral", "bias_score": 0, "up_4pct_today": 137, "down_4pct_today": 446, "ratio_5d": 1.06, "ratio_10d": 1.09, "t2108": 45.21, "spy_close": 6816.63}, {"date": "2026-03-04", "bias": "Neutral", "bias_score": 0, "up_4pct_today": 381, "down_4pct_today": 79, "ratio_5d": 1.1, "ratio_10d": 1.13, "t2108": 46.76, "spy_close": 6869.5}, {"date": "2026-03-05", "bias": "Neutral", "bias_score": -1, "up_4pct_today": 213, "down_4pct_today": 407, "ratio_5d": 0.81, "ratio_10d": 1.0, "t2108": 41.3, "spy_close": 6380.71}, {"date": "2026-03-06", "bias": "Neutral", "bias_score": -1, "up_4pct_today": 141, "down_4pct_today": 388, "ratio_5d": 0.82, "ratio_10d": 0.93, "t2108": 33.82, "spy_close": 6740.02}, {"date": "2026-03-09", "bias": "Neutral", "bias_score": -1, "up_4pct_today": 363, "down_4pct_today": 159, "ratio_5d": 0.84, "ratio_10d": 1.17, "t2108": 32.56, "spy_close": 6795.99}, {"date": "2026-03-10", "bias": "Neutral", "bias_score": -1, "up_4pct_today": 244, "down_4pct_today": 173, "ratio_5d": 1.11, "ratio_10d": 1.09, "t2108": 31.58, "spy_close": 6781.48}, {"date": "2026-03-11", "bias": "Slightly Bearish", "bias_score": -3, "up_4pct_today": 223, "down_4pct_today": 156, "ratio_5d": 0.92, "ratio_10d": 1.01, "t2108": 29.98, "spy_close": 6775.8}, {"date": "2026-03-12", "bias": "Bearish", "bias_score": -5, "up_4pct_today": 152, "down_4pct_today": 635, "ratio_5d": 0.74, "ratio_10d": 0.78, "t2108": 25.47, "spy_close": 6672.62}, {"date": "2026-03-13", "bias": "Slightly Bearish", "bias_score": -4, "up_4pct_today": 124, "down_4pct_today": 284, "ratio_5d": 0.79, "ratio_10d": 0.8, "t2108": 23.16, "spy_close": 6632.19}, {"date": "2026-03-16", "bias": "Slightly Bearish", "bias_score": -3, "up_4pct_today": 294, "down_4pct_today": 128, "ratio_5d": 0.75, "ratio_10d": 0.8, "t2108": 25.09, "spy_close": 6699.38}, {"date": "2026-03-17", "bias": "Slightly Bearish", "bias_score": -3, "up_4pct_today": 274, "down_4pct_today": 141, "ratio_5d": 0.79, "ratio_10d": 0.94, "t2108": 26.75, "spy_close": 6716.09}, {"date": "2026-03-18", "bias": "Bearish", "bias_score": -7, "up_4pct_today": 110, "down_4pct_today": 486, "ratio_5d": 0.57, "ratio_10d": 0.72, "t2108": 22.87, "spy_close": 6624.7}, {"date": "2026-03-19", "bias": "Bearish", "bias_score": -6, "up_4pct_today": 184, "down_4pct_today": 263, "ratio_5d": 0.76, "ratio_10d": 0.75, "t2108": 22.54, "spy_close": 6606.49}, {"date": "2026-03-20", "bias": "Bearish", "bias_score": -6, "up_4pct_today": 146, "down_4pct_today": 662, "ratio_5d": 0.6, "ratio_10d": 0.68, "t2108": 16.74, "spy_close": 6506.48}, {"date": "2026-03-23", "bias": "Bearish", "bias_score": -6, "up_4pct_today": 235, "down_4pct_today": 85, "ratio_5d": 0.58, "ratio_10d": 0.66, "t2108": 20.99, "spy_close": 6581.0}, {"date": "2026-03-24", "bias": "Bearish", "bias_score": -7, "up_4pct_today": 223, "down_4pct_today": 285, "ratio_5d": 0.5, "ratio_10d": 0.63, "t2108": 22.97, "spy_close": 6556.37}, {"date": "2026-03-25", "bias": "Bearish", "bias_score": -5, "up_4pct_today": 320, "down_4pct_today": 113, "ratio_5d": 0.79, "ratio_10d": 0.67, "t2108": 24.53, "spy_close": 6591.9}, {"date": "2026-03-26", "bias": "Bearish", "bias_score": -6, "up_4pct_today": 146, "down_4pct_today": 331, "ratio_5d": 0.72, "ratio_10d": 0.74, "t2108": 22.12, "spy_close": 6477.16}, {"date": "2026-03-27", "bias": "Bearish", "bias_score": -6, "up_4pct_today": 112, "down_4pct_today": 624, "ratio_5d": 0.72, "ratio_10d": 0.66, "t2108": 19.24, "spy_close": 6368.85}, {"date": "2026-03-30", "bias": "Extremely Bearish", "bias_score": -9, "up_4pct_today": 120, "down_4pct_today": 435, "ratio_5d": 0.52, "ratio_10d": 0.55, "t2108": 19.52, "spy_close": 6343.72}, {"date": "2026-03-31", "bias": "Bearish", "bias_score": -5, "up_4pct_today": 885, "down_4pct_today": 83, "ratio_5d": 1.0, "ratio_10d": 0.74, "t2108": 23.37, "spy_close": 6528.52}, {"date": "2026-04-01", "bias": "Slightly Bearish", "bias_score": -3, "up_4pct_today": 298, "down_4pct_today": 160, "ratio_5d": 0.96, "ratio_10d": 0.88, "t2108": 25.22, "spy_close": 6575.32}, {"date": "2026-04-02", "bias": "Slightly Bearish", "bias_score": -3, "up_4pct_today": 240, "down_4pct_today": 92, "ratio_5d": 1.19, "ratio_10d": 0.95, "t2108": 27.47, "spy_close": 6582.69}, {"date": "2026-04-06", "bias": "Slightly Bullish", "bias_score": 2, "up_4pct_today": 248, "down_4pct_today": 122, "ratio_5d": 2.01, "ratio_10d": 1.21, "t2108": 30.99, "spy_close": 6611.83}, {"date": "2026-04-07", "bias": "Neutral", "bias_score": 1, "up_4pct_today": 162, "down_4pct_today": 214, "ratio_5d": 2.73, "ratio_10d": 1.12, "t2108": 31.87, "spy_close": 6616.85}, {"date": "2026-04-08", "bias": "Slightly Bullish", "bias_score": 3, "up_4pct_today": 834, "down_4pct_today": 164, "ratio_5d": 2.37, "ratio_10d": 1.44, "t2108": 43.91, "spy_close": 6782.81}, {"date": "2026-04-09", "bias": "Slightly Bullish", "bias_score": 3, "up_4pct_today": 233, "down_4pct_today": 199, "ratio_5d": 2.17, "ratio_10d": 1.35, "t2108": 46.65, "spy_close": 6824.66}, {"date": "2026-04-10", "bias": "Slightly Bullish", "bias_score": 3, "up_4pct_today": 159, "down_4pct_today": 239, "ratio_5d": 1.74, "ratio_10d": 1.41, "t2108": 45.39, "spy_close": 6816.89}, {"date": "2026-04-13", "bias": "Bullish", "bias_score": 5, "up_4pct_today": 543, "down_4pct_today": 80, "ratio_5d": 2.16, "ratio_10d": 2.08, "t2108": 50.31, "spy_close": 6886.24}, {"date": "2026-04-14", "bias": "Bullish", "bias_score": 5, "up_4pct_today": 420, "down_4pct_today": 130, "ratio_5d": 2.7, "ratio_10d": 2.71, "t2108": 53.21, "spy_close": 6967.38}, {"date": "2026-04-15", "bias": "Bullish", "bias_score": 5, "up_4pct_today": 463, "down_4pct_today": 118, "ratio_5d": 2.37, "ratio_10d": 2.37, "t2108": 54.22, "spy_close": 7022.95}, {"date": "2026-04-16", "bias": "Bullish", "bias_score": 6, "up_4pct_today": 299, "down_4pct_today": 141, "ratio_5d": 2.66, "ratio_10d": 2.4, "t2108": 55.75, "spy_close": 7041.28}, {"date": "2026-04-17", "bias": "Bullish", "bias_score": 7, "up_4pct_today": 624, "down_4pct_today": 143, "ratio_5d": 3.84, "ratio_10d": 2.57, "t2108": 62.75, "spy_close": 7126.06}, {"date": "2026-04-20", "bias": "Bullish", "bias_score": 7, "up_4pct_today": 262, "down_4pct_today": 108, "ratio_5d": 3.23, "ratio_10d": 2.6, "t2108": 62.99, "spy_close": 7109.14}, {"date": "2026-04-21", "bias": "Bullish", "bias_score": 7, "up_4pct_today": 180, "down_4pct_today": 362, "ratio_5d": 2.1, "ratio_10d": 2.39, "t2108": 59.23, "spy_close": 7064.01}, {"date": "2026-04-22", "bias": "Bullish", "bias_score": 7, "up_4pct_today": 325, "down_4pct_today": 125, "ratio_5d": 1.92, "ratio_10d": 2.13, "t2108": 59.55, "spy_close": 7137.9}, {"date": "2026-04-23", "bias": "Bullish", "bias_score": 6, "up_4pct_today": 157, "down_4pct_today": 496, "ratio_5d": 1.25, "ratio_10d": 1.77, "t2108": 59.03, "spy_close": 7108.4}, {"date": "2026-04-24", "bias": "Bullish", "bias_score": 5, "up_4pct_today": 224, "down_4pct_today": 161, "ratio_5d": 0.92, "ratio_10d": 1.88, "t2108": 59.47, "spy_close": 7165.08}, {"date": "2026-04-27", "bias": "Bullish", "bias_score": 5, "up_4pct_today": 206, "down_4pct_today": 158, "ratio_5d": 0.84, "ratio_10d": 1.63, "t2108": 60.02, "spy_close": 7173.91}, {"date": "2026-04-28", "bias": "Slightly Bullish", "bias_score": 4, "up_4pct_today": 156, "down_4pct_today": 295, "ratio_5d": 0.86, "ratio_10d": 1.37, "t2108": 60.56, "spy_close": 7138.8}, {"date": "2026-04-29", "bias": "Neutral", "bias_score": 1, "up_4pct_today": 172, "down_4pct_today": 409, "ratio_5d": 0.6, "ratio_10d": 1.09, "t2108": 54.88, "spy_close": 7135.95}, {"date": "2026-04-30", "bias": "Slightly Bullish", "bias_score": 4, "up_4pct_today": 559, "down_4pct_today": 116, "ratio_5d": 1.16, "ratio_10d": 1.21, "t2108": 60.03, "spy_close": 7209.01}, {"date": "2026-05-01", "bias": "Slightly Bullish", "bias_score": 4, "up_4pct_today": 342, "down_4pct_today": 122, "ratio_5d": 1.3, "ratio_10d": 1.1, "t2108": 59.19, "spy_close": 7230.12}, {"date": "2026-05-04", "bias": "Slightly Bullish", "bias_score": 2, "up_4pct_today": 262, "down_4pct_today": 308, "ratio_5d": 1.19, "ratio_10d": 1.01, "t2108": 55.22, "spy_close": 7200.75}, {"date": "2026-05-05", "bias": "Slightly Bullish", "bias_score": 3, "up_4pct_today": 368, "down_4pct_today": 199, "ratio_5d": 1.48, "ratio_10d": 1.16, "t2108": 56.91, "spy_close": 7259.22}, {"date": "2026-05-06", "bias": "Bullish", "bias_score": 6, "up_4pct_today": 631, "down_4pct_today": 309, "ratio_5d": 2.05, "ratio_10d": 1.2, "t2108": 60.64, "spy_close": 7365.12}, {"date": "2026-05-07", "bias": "Slightly Bullish", "bias_score": 4, "up_4pct_today": 311, "down_4pct_today": 380, "ratio_5d": 1.45, "ratio_10d": 1.32, "t2108": 57.15, "spy_close": 7337.11}, {"date": "2026-05-08", "bias": "Slightly Bullish", "bias_score": 4, "up_4pct_today": 319, "down_4pct_today": 229, "ratio_5d": 1.33, "ratio_10d": 1.32, "t2108": 57.01, "spy_close": 7398.93}, {"date": "2026-05-11", "bias": "Slightly Bullish", "bias_score": 3, "up_4pct_today": 351, "down_4pct_today": 404, "ratio_5d": 1.3, "ratio_10d": 1.25, "t2108": 52.72, "spy_close": 7412.84}, {"date": "2026-05-12", "bias": "Slightly Bullish", "bias_score": 2, "up_4pct_today": 188, "down_4pct_today": 236, "ratio_5d": 1.16, "ratio_10d": 1.29, "t2108": 50.92, "spy_close": 7400.96}, {"date": "2026-05-13", "bias": "Neutral", "bias_score": 1, "up_4pct_today": 288, "down_4pct_today": 310, "ratio_5d": 0.93, "ratio_10d": 1.38, "t2108": 46.25, "spy_close": 7444.25}, {"date": "2026-05-14", "bias": "Neutral", "bias_score": 1, "up_4pct_today": 340, "down_4pct_today": 221, "ratio_5d": 1.06, "ratio_10d": 1.25, "t2108": 47.66, "spy_close": 7501.24}, {"date": "2026-05-15", "bias": "Slightly Bearish", "bias_score": -2, "up_4pct_today": 146, "down_4pct_today": 502, "ratio_5d": 0.78, "ratio_10d": 1.03, "t2108": 39.72, "spy_close": 7408.5}, {"date": "2026-05-18", "bias": "Neutral", "bias_score": -1, "up_4pct_today": 267, "down_4pct_today": 387, "ratio_5d": 0.74, "ratio_10d": 1.01, "t2108": 43.23, "spy_close": 7403.05}, {"date": "2026-05-19", "bias": "Slightly Bearish", "bias_score": -2, "up_4pct_today": 127, "down_4pct_today": 265, "ratio_5d": 0.69, "ratio_10d": 0.92, "t2108": 38.88, "spy_close": 7353.61}, {"date": "2026-05-20", "bias": "Neutral", "bias_score": 0, "up_4pct_today": 534, "down_4pct_today": 98, "ratio_5d": 0.96, "ratio_10d": 0.95, "t2108": 45.32, "spy_close": 7432.97}, {"date": "2026-05-21", "bias": "Neutral", "bias_score": 0, "up_4pct_today": 385, "down_4pct_today": 113, "ratio_5d": 1.07, "ratio_10d": 1.07, "t2108": 46.47, "spy_close": 7445.72}, {"date": "2026-05-22", "bias": "Slightly Bullish", "bias_score": 2, "up_4pct_today": 339, "down_4pct_today": 119, "ratio_5d": 1.68, "ratio_10d": 1.12, "t2108": 47.71, "spy_close": 7473.47}, {"date": "2026-05-26", "bias": "Slightly Bullish", "bias_score": 4, "up_4pct_today": 523, "down_4pct_today": 185, "ratio_5d": 2.45, "ratio_10d": 1.29, "t2108": 50.09, "spy_close": 7519.12}, {"date": "2026-05-27", "bias": "Slightly Bullish", "bias_score": 4, "up_4pct_today": 295, "down_4pct_today": 166, "ratio_5d": 3.05, "ratio_10d": 1.37, "t2108": 49.23, "spy_close": 7520.36}, {"date": "2026-05-28", "bias": "Bullish", "bias_score": 5, "up_4pct_today": 459, "down_4pct_today": 98, "ratio_5d": 2.94, "ratio_10d": 1.59, "t2108": 48.69, "spy_close": 7563.63}, {"date": "2026-05-29", "bias": "Bullish", "bias_score": 5, "up_4pct_today": 329, "down_4pct_today": 218, "ratio_5d": 2.47, "ratio_10d": 1.58, "t2108": 45.61, "spy_close": 7580.06}, {"date": "2026-06-01", "bias": "Bullish", "bias_score": 5, "up_4pct_today": 419, "down_4pct_today": 221, "ratio_5d": 2.28, "ratio_10d": 1.97, "t2108": 43.86, "spy_close": 7599.96}, {"date": "2026-06-02", "bias": "Bullish", "bias_score": 5, "up_4pct_today": 295, "down_4pct_today": 301, "ratio_5d": 1.79, "ratio_10d": 2.08, "t2108": 45.31, "spy_close": 7609.78}, {"date": "2026-06-03", "bias": "Slightly Bullish", "bias_score": 2, "up_4pct_today": 154, "down_4pct_today": 441, "ratio_5d": 1.29, "ratio_10d": 1.9, "t2108": 39.31, "spy_close": 7553.68}, {"date": "2026-06-04", "bias": "Slightly Bullish", "bias_score": 3, "up_4pct_today": 397, "down_4pct_today": 116, "ratio_5d": 1.23, "ratio_10d": 1.82, "t2108": 44.89, "spy_close": 7584.31}, {"date": "2026-06-05", "bias": "Slightly Bearish", "bias_score": -2, "up_4pct_today": 81, "down_4pct_today": 972, "ratio_5d": 0.66, "ratio_10d": 1.16, "t2108": 40.45, "spy_close": 7383.74}, {"date": "2026-06-08", "bias": "Slightly Bearish", "bias_score": -3, "up_4pct_today": 238, "down_4pct_today": 141, "ratio_5d": 0.59, "ratio_10d": 1.12, "t2108": 40.03, "spy_close": 7405.73}, {"date": "2026-06-09", "bias": "Neutral", "bias_score": -1, "up_4pct_today": 350, "down_4pct_today": 362, "ratio_5d": 0.6, "ratio_10d": 0.99, "t2108": 44.11, "spy_close": 7386.65}, {"date": "2026-06-10", "bias": "Slightly Bearish", "bias_score": -2, "up_4pct_today": 219, "down_4pct_today": 245, "ratio_5d": 0.7, "ratio_10d": 0.94, "t2108": 41.65, "spy_close": 7266.99}, {"date": "2026-06-11", "bias": "Neutral", "bias_score": 0, "up_4pct_today": 692, "down_4pct_today": 116, "ratio_5d": 0.86, "ratio_10d": 1.01, "t2108": 46.35, "spy_close": 7394.3}, {"date": "2026-06-12", "bias": "Slightly Bullish", "bias_score": 2, "up_4pct_today": 204, "down_4pct_today": 181, "ratio_5d": 1.63, "ratio_10d": 0.98, "t2108": 50.19, "spy_close": 7431.46}, {"date": "2026-06-15", "bias": "Slightly Bullish", "bias_score": 3, "up_4pct_today": 426, "down_4pct_today": 244, "ratio_5d": 1.65, "ratio_10d": 0.98, "t2108": 48.7, "spy_close": 7554.29}, {"date": "2026-06-16", "bias": "Slightly Bullish", "bias_score": 3, "up_4pct_today": 193, "down_4pct_today": 248, "ratio_5d": 1.68, "ratio_10d": 0.96, "t2108": 49.56, "spy_close": 7511.35}, {"date": "2026-06-17", "bias": "Slightly Bullish", "bias_score": 3, "up_4pct_today": 275, "down_4pct_today": 328, "ratio_5d": 1.6, "ratio_10d": 1.04, "t2108": 42.92, "spy_close": 7420.1}, {"date": "2026-06-18", "bias": "Slightly Bullish", "bias_score": 2, "up_4pct_today": 576, "down_4pct_today": 236, "ratio_5d": 1.35, "ratio_10d": 1.06, "t2108": 44.44, "spy_close": 7500.58}, {"date": "2026-06-22", "bias": "Slightly Bullish", "bias_score": 2, "up_4pct_today": 158, "down_4pct_today": 168, "ratio_5d": 1.33, "ratio_10d": 1.47, "t2108": 44.1, "spy_close": 7472.79}, {"date": "2026-06-23", "bias": "Neutral", "bias_score": 1, "up_4pct_today": 192, "down_4pct_today": 279, "ratio_5d": 1.11, "ratio_10d": 1.36, "t2108": 45.26, "spy_close": 7365.46}, {"date": "2026-06-24", "bias": "Neutral", "bias_score": 1, "up_4pct_today": 369, "down_4pct_today": 416, "ratio_5d": 1.1, "ratio_10d": 1.34, "t2108": 47.7, "spy_close": 7358.22}, {"date": "2026-06-25", "bias": "Neutral", "bias_score": 1, "up_4pct_today": 214, "down_4pct_today": 283, "ratio_5d": 1.09, "ratio_10d": 1.32, "t2108": 48.19, "spy_close": 7357.49}, {"date": "2026-06-26", "bias": "Slightly Bullish", "bias_score": 2, "up_4pct_today": 880, "down_4pct_today": 260, "ratio_5d": 1.29, "ratio_10d": 1.32, "t2108": 52.09, "spy_close": 7354.02}, {"date": "2026-06-29", "bias": "Slightly Bullish", "bias_score": 2, "up_4pct_today": 230, "down_4pct_today": 83, "ratio_5d": 1.43, "ratio_10d": 1.38, "t2108": 51.65, "spy_close": 7440.43}, {"date": "2026-06-30", "bias": "Slightly Bullish", "bias_score": 3, "up_4pct_today": 325, "down_4pct_today": 157, "ratio_5d": 1.68, "ratio_10d": 1.39, "t2108": 51.14, "spy_close": 7499.36}, {"date": "2026-07-01", "bias": "Slightly Bullish", "bias_score": 3, "up_4pct_today": 389, "down_4pct_today": 219, "ratio_5d": 2.03, "ratio_10d": 1.49, "t2108": 50.97, "spy_close": 7483.23}, {"date": "2026-07-02", "bias": "Slightly Bullish", "bias_score": 3, "up_4pct_today": 272, "down_4pct_today": 375, "ratio_5d": 1.92, "ratio_10d": 1.46, "t2108": 51.95, "spy_close": 7483.24}, {"date": "2026-07-06", "bias": "Slightly Bullish", "bias_score": 2, "up_4pct_today": 233, "down_4pct_today": 155, "ratio_5d": 1.47, "ratio_10d": 1.36, "t2108": 52.0, "spy_close": 7537.98}]};
+
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+function biasColor(score) {
+  if (score >= 2)  return css('--bull');
+  if (score <= -2) return css('--bear');
+  return css('--neutral');
+}
+function biasWash(score) {
+  if (score >= 2)  return css('--bull-wash');
+  if (score <= -2) return css('--bear-wash');
+  return css('--neut-wash');
+}
+const fmt = (v, dp = 0) => Number(v).toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp });
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+function shortDate(iso) {
+  const [y, m, d] = iso.split('-');
+  return new Date(+y, m - 1, +d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// ── Hero ──────────────────────────────────────────────────────────────────────
+const cond = DATA.condition;
+function renderHero() {
+  const col = biasColor(cond.score);
+  const v = document.getElementById('verdict');
+  v.textContent = cond.condition;
+  v.style.color = col;
+  document.getElementById('hero-summary').textContent = cond.summary;
+  document.getElementById('hdr-date').textContent = DATA.data_date;
+  document.getElementById('foot-generated').textContent = DATA.computed_at;
+
+  const marker = document.getElementById('rail-marker');
+  marker.style.left = ((cond.score + 10) / 20 * 100) + '%';
+  marker.style.background = col;
+  const rs = document.getElementById('rail-score');
+  rs.textContent = (cond.score > 0 ? '+' : '') + cond.score + ' / 10';
+  rs.style.color = col;
+}
+
+// ── Component chips ───────────────────────────────────────────────────────────
+function renderChips() {
+  document.getElementById('chips').innerHTML = Object.values(cond.components).map(c => {
+    const col = c.score > 0 ? css('--bull') : c.score < 0 ? css('--bear') : css('--neutral');
+    const icon = c.score > 0 ? '▲' : c.score < 0 ? '▼' : '▬';
+    const pts = (c.score > 0 ? '+' : '') + c.score + ' pts';
+    return `<div class="chip">
+      <div class="c-label">${esc(c.label)}</div>
+      <div class="c-value mono" style="color:${col}">${icon} ${esc(c.value)}</div>
+      <div class="c-pts" style="color:${col}">${pts}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Stat tiles ────────────────────────────────────────────────────────────────
+function renderTiles() {
+  const L = DATA.latest;
+  const tiles = [
+    { label: 'Up 4%+ today', value: fmt(L.up_4pct_today), color: css('--bull'), sub: 'vs ' + fmt(L.down_4pct_today) + ' down' },
+    { label: 'Down 4%+ today', value: fmt(L.down_4pct_today), color: css('--bear'), sub: 'daily breakdowns' },
+    { label: '5-day ratio', value: fmt(L.ratio_5d, 2), color: L.ratio_5d >= 1.2 ? css('--bull') : L.ratio_5d >= 0.8 ? css('--neutral') : css('--bear'), sub: 'up vs down, 5 sessions' },
+    { label: '10-day ratio', value: fmt(L.ratio_10d, 2), color: L.ratio_10d >= 1.2 ? css('--bull') : L.ratio_10d >= 0.8 ? css('--neutral') : css('--bear'), sub: 'up vs down, 10 sessions' },
+    { label: 'T2108', value: fmt(L.t2108, 1) + '%', color: L.t2108 >= 60 ? css('--bull') : L.t2108 >= 40 ? css('--neutral') : css('--bear'), sub: 'stocks above 40-day MA' },
+    { label: 'S&P 500', value: fmt(L.spy_close, 2), color: 'var(--ink)', sub: fmt(L.universe_count) + '-stock universe' },
+  ];
+  document.getElementById('tiles').innerHTML = tiles.map(t => `<div class="tile">
+    <div class="t-label">${t.label}</div>
+    <div class="t-value mono" style="color:${t.color}">${t.value}</div>
+    <div class="t-sub">${t.sub}</div>
+  </div>`).join('');
+}
+
+// ── Charts ────────────────────────────────────────────────────────────────────
+const W = 940, H = 220, M = { top: 14, right: 16, bottom: 26, left: 40 };
+let rangeDays = 0;
+const rows = () => rangeDays ? DATA.history.slice(-rangeDays) : DATA.history;
+
+function monthTicks(data) {
+  const ticks = [];
+  let last = '';
+  data.forEach((r, i) => {
+    const m = r.date.slice(0, 7);
+    if (m !== last) { ticks.push([i, r.date]); last = m; }
+  });
+  return data.length <= 40 ? ticks : ticks.filter((_, i) => i % Math.ceil(ticks.length / 7) === 0 || true).slice(0, 8);
+}
+
+function renderScoreChart() {
+  const data = rows();
+  const svg = document.getElementById('score-svg');
+  const iw = W - M.left - M.right, ih = H - M.top - M.bottom;
+  const x = (i) => M.left + (i + 0.5) / data.length * iw;
+  const y = (v) => M.top + (1 - (v + 10) / 20) * ih;
+  const bw = Math.max(1.5, Math.min(14, iw / data.length - 2));
+
+  let g = '';
+  [-10, -5, 0, 5, 10].forEach(v => {
+    const yy = y(v);
+    g += `<line x1="${M.left}" x2="${W - M.right}" y1="${yy}" y2="${yy}" stroke="var(--grid)" stroke-width="${v === 0 ? 0 : 1}"/>`;
+    g += `<text x="${M.left - 8}" y="${yy + 3.5}" text-anchor="end" font-size="10" fill="var(--muted)" class="mono">${v > 0 ? '+' + v : v}</text>`;
+  });
+  g += `<line x1="${M.left}" x2="${W - M.right}" y1="${y(0)}" y2="${y(0)}" stroke="var(--muted)" stroke-width="1"/>`;
+
+  let bars = '';
+  data.forEach((r, i) => {
+    const col = biasColor(r.bias_score);
+    const y0 = y(0), y1 = y(r.bias_score);
+    const top = Math.min(y0, y1), h = Math.max(1.5, Math.abs(y1 - y0));
+    bars += `<rect data-i="${i}" x="${(x(i) - bw / 2).toFixed(1)}" y="${top.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="${Math.min(2, bw / 2)}" fill="${col}"/>`;
+  });
+
+  let axis = '';
+  monthTicks(data).forEach(([i, date]) => {
+    axis += `<text x="${x(i).toFixed(1)}" y="${H - 8}" font-size="10" fill="var(--muted)">${shortDate(date).split(' ')[0]} ${date.slice(0, 4) !== data[data.length-1].date.slice(0,4) ? "'" + date.slice(2, 4) : ''}</text>`;
+  });
+
+  svg.innerHTML = g + `<g>${bars}</g>` + axis;
+  hookBarTooltip(svg, document.getElementById('score-tip'), data, x, bw);
+}
+
+function hookBarTooltip(svg, tip, data, x, bw) {
+  const box = svg.parentElement;
+  function locate(evt) {
+    const r = svg.getBoundingClientRect();
+    const px = (evt.clientX - r.left) / r.width * W;
+    let best = -1, bd = 1e9;
+    data.forEach((_, i) => { const d = Math.abs(px - x(i)); if (d < bd) { bd = d; best = i; } });
+    return bd <= Math.max(bw, 10) ? best : -1;
+  }
+  svg.onmousemove = (evt) => {
+    const i = locate(evt);
+    if (i < 0) { tip.classList.remove('show'); return; }
+    const d = data[i];
+    tip.innerHTML = `<strong>${shortDate(d.date)}, ${d.date.slice(0, 4)}</strong><br>` +
+      `<span style="color:${biasColor(d.bias_score)}">&#9679;</span> ${esc(d.bias)} (${d.bias_score > 0 ? '+' : ''}${d.bias_score})<br>` +
+      `Up 4%+: ${fmt(d.up_4pct_today)} &middot; Dn 4%+: ${fmt(d.down_4pct_today)}`;
+    tip.classList.add('show');
+    const r = svg.getBoundingClientRect();
+    const bx = box.getBoundingClientRect();
+    let lx = (evt.clientX - bx.left) + 14;
+    if (lx + tip.offsetWidth > bx.width - 4) lx = (evt.clientX - bx.left) - tip.offsetWidth - 14;
+    tip.style.left = lx + 'px';
+    tip.style.top = Math.max(0, evt.clientY - bx.top - tip.offsetHeight - 10) + 'px';
+  };
+  svg.onmouseleave = () => tip.classList.remove('show');
+}
+
+function renderT2108Chart() {
+  const data = rows();
+  const svg = document.getElementById('t2108-svg');
+  const iw = W - M.left - M.right, ih = H - M.top - M.bottom;
+  const x = (i) => M.left + (data.length === 1 ? 0.5 : i / (data.length - 1)) * iw;
+  const y = (v) => M.top + (1 - v / 100) * ih;
+
+  let g = `<rect x="${M.left}" y="${y(100)}" width="${iw}" height="${y(70) - y(100)}" fill="var(--bull-wash)"/>` +
+          `<rect x="${M.left}" y="${y(30)}" width="${iw}" height="${y(0) - y(30)}" fill="var(--bear-wash)"/>`;
+  [0, 30, 50, 70, 100].forEach(v => {
+    const yy = y(v);
+    g += `<line x1="${M.left}" x2="${W - M.right}" y1="${yy}" y2="${yy}" stroke="var(--grid)" stroke-width="1"/>`;
+    g += `<text x="${M.left - 8}" y="${yy + 3.5}" text-anchor="end" font-size="10" fill="var(--muted)" class="mono">${v}</text>`;
+  });
+  g += `<text x="${W - M.right - 4}" y="${y(70) - 5}" text-anchor="end" font-size="10" fill="var(--muted)">overbought &gt;70</text>`;
+  g += `<text x="${W - M.right - 4}" y="${y(30) + 13}" text-anchor="end" font-size="10" fill="var(--muted)">washout &lt;30</text>`;
+
+  const pts = data.map((r, i) => `${x(i).toFixed(1)},${y(r.t2108 ?? 50).toFixed(1)}`);
+  const line = `<polyline points="${pts.join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>`;
+  const last = data[data.length - 1];
+  const end = `<circle cx="${x(data.length - 1).toFixed(1)}" cy="${y(last.t2108).toFixed(1)}" r="4" fill="var(--accent)" stroke="var(--card)" stroke-width="2"/>` +
+    `<text x="${(x(data.length - 1) - 8).toFixed(1)}" y="${(y(last.t2108) - 9).toFixed(1)}" text-anchor="end" font-size="11" font-weight="700" fill="var(--ink)" class="mono">${fmt(last.t2108, 1)}%</text>`;
+
+  let axis = '';
+  monthTicks(data).forEach(([i, date]) => {
+    axis += `<text x="${x(i).toFixed(1)}" y="${H - 8}" font-size="10" fill="var(--muted)">${shortDate(date).split(' ')[0]}</text>`;
+  });
+
+  const cross = `<line id="t2108-cross" x1="0" x2="0" y1="${M.top}" y2="${H - M.bottom}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3" opacity="0"/>` +
+    `<circle id="t2108-dot" r="4" fill="var(--accent)" stroke="var(--card)" stroke-width="2" opacity="0"/>`;
+
+  svg.innerHTML = g + line + end + axis + cross;
+
+  const tip = document.getElementById('t2108-tip');
+  const box = svg.parentElement;
+  svg.onmousemove = (evt) => {
+    const r = svg.getBoundingClientRect();
+    const px = (evt.clientX - r.left) / r.width * W;
+    let i = Math.round((px - M.left) / iw * (data.length - 1));
+    i = Math.max(0, Math.min(data.length - 1, i));
+    const d = data[i];
+    const cx = x(i), cy = y(d.t2108 ?? 50);
+    const cross = document.getElementById('t2108-cross');
+    const dot = document.getElementById('t2108-dot');
+    cross.setAttribute('x1', cx); cross.setAttribute('x2', cx); cross.setAttribute('opacity', '1');
+    dot.setAttribute('cx', cx); dot.setAttribute('cy', cy); dot.setAttribute('opacity', '1');
+    tip.innerHTML = `<strong>${shortDate(d.date)}, ${d.date.slice(0, 4)}</strong><br>T2108: ${fmt(d.t2108, 1)}%<br>S&amp;P 500: ${fmt(d.spy_close, 2)}`;
+    tip.classList.add('show');
+    const bx = box.getBoundingClientRect();
+    let lx = (evt.clientX - bx.left) + 14;
+    if (lx + tip.offsetWidth > bx.width - 4) lx = (evt.clientX - bx.left) - tip.offsetWidth - 14;
+    tip.style.left = lx + 'px';
+    tip.style.top = Math.max(0, evt.clientY - bx.top - tip.offsetHeight - 10) + 'px';
+  };
+  svg.onmouseleave = () => {
+    tip.classList.remove('show');
+    document.getElementById('t2108-cross').setAttribute('opacity', '0');
+    document.getElementById('t2108-dot').setAttribute('opacity', '0');
+  };
+}
+
+// ── Range toggle ──────────────────────────────────────────────────────────────
+document.getElementById('range-row').addEventListener('click', (e) => {
+  const btn = e.target.closest('.range-btn');
+  if (!btn) return;
+  rangeDays = +btn.dataset.days;
+  document.querySelectorAll('.range-btn').forEach(b => b.classList.toggle('on', b === btn));
+  renderScoreChart();
+  renderT2108Chart();
+});
+
+// ── Table ─────────────────────────────────────────────────────────────────────
+function renderTable() {
+  const rows30 = DATA.history.slice(-30).reverse();
+  document.getElementById('tbl-body').innerHTML = rows30.map(r => {
+    const col = biasColor(r.bias_score);
+    return `<tr>
+      <td class="mono" style="color:var(--ink-2)">${r.date}</td>
+      <td><span class="pill" style="color:${col}; background:${biasWash(r.bias_score)}">${esc(r.bias)}</span></td>
+      <td class="mono" style="color:${col}; font-weight:700">${r.bias_score > 0 ? '+' : ''}${r.bias_score}</td>
+      <td class="mono" style="color:var(--bull)">${fmt(r.up_4pct_today)}</td>
+      <td class="mono" style="color:var(--bear)">${fmt(r.down_4pct_today)}</td>
+      <td class="mono">${fmt(r.ratio_5d, 2)}</td>
+      <td class="mono">${fmt(r.ratio_10d, 2)}</td>
+      <td class="mono">${fmt(r.t2108, 1)}%</td>
+      <td class="mono">${fmt(r.spy_close, 2)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Render all (re-render on theme flip so JS-set colors follow the tokens) ───
+function renderAll() {
+  renderHero(); renderChips(); renderTiles();
+  renderScoreChart(); renderT2108Chart(); renderTable();
+}
+renderAll();
+new MutationObserver(renderAll).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+try {
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', renderAll);
+} catch (e) {}
+</script>
