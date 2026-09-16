@@ -181,11 +181,24 @@ tr:last-child td { border-bottom: none; }
 footer { color: var(--muted); font-size: 11.5px; text-align: center; line-height: 1.7; }
 footer a { color: var(--accent); text-decoration: none; }
 footer a:hover, footer a:focus-visible { text-decoration: underline; }
+
+/* Page nav — a line of grey text in the header corner went unnoticed. */
+.nav { display: flex; gap: 8px; flex-wrap: wrap; }
+.nav a { font-size: 13px; font-weight: 700; padding: 7px 16px; border-radius: 16px;
+  border: 1px solid var(--border); background: var(--card); color: var(--ink-2); text-decoration: none; }
+.nav a:hover { background: var(--grid); color: var(--ink); }
+.nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.nav a.on { background: var(--accent); border-color: var(--accent); color: var(--card); }
 </style>
 </head>
 <body>
 
 <div class="wrap">
+
+<nav class="nav" aria-label="Pages">
+  <a href="./" class="on" aria-current="page">Market Breadth</a>
+  <a href="./themes.html">Sectors &amp; Themes &#8594;</a>
+</nav>
 
 <header>
   <div>
@@ -194,8 +207,7 @@ footer a:hover, footer a:focus-visible { text-decoration: underline; }
   </div>
   <div class="hdr-meta">
     Data through <strong id="hdr-date" class="mono"></strong> ·
-    source: <a href="https://stockbee.blogspot.com/p/mm.html" target="_blank" rel="noopener">stockbee.blogspot.com/p/mm.html</a><br>
-    <a href="./themes.html">Sector &amp; theme tracker &#8594;</a>
+    source: <a href="https://stockbee.blogspot.com/p/mm.html" target="_blank" rel="noopener">stockbee.blogspot.com/p/mm.html</a>
   </div>
 </header>
 
