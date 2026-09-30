@@ -130,9 +130,13 @@ tr.grp { cursor: pointer; }
 tr.grp td { font-weight: 500; }
 tr.grp:hover td { background: hsl(220 18% 14%); }
 tr.mem td { background: hsl(220 18% 9.5%); font-size: 12.5px; color: var(--ink-2); }
-.gname { display: inline-flex; vertical-align: middle; align-items: center; gap: 10px; max-width: 330px; overflow: hidden; text-overflow: ellipsis; }
-.gicon { width: 16px; height: 16px; line-height: 1; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--border); color: var(--muted);
-  display: inline-grid; place-items: center; font-size: 9px; flex: none; }
+.gname { display: inline-flex; vertical-align: middle; align-items: center; gap: 10px; max-width: 360px; overflow: hidden; }
+.gicon { width: 18px; height: 18px; line-height: 1; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--border); color: var(--ink-2);
+  display: inline-grid; place-items: center; font-size: 11px; flex: none; }
+.gicon:empty { visibility: hidden; }
+.gtext { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gcount { flex: none; font-size: 11px; font-weight: 500; color: var(--muted); margin-left: -4px; }
+tr.grp.open .gcount { color: var(--accent); }
 tr.grp.open .gicon { border-color: var(--accent); color: var(--accent); }
 .pill { display: inline-block; font-size: 11px; font-weight: 600; border-radius: 5px; padding: 1px 8px; }
 .lead { font-size: 11.5px; line-height: 1.5; }
@@ -140,6 +144,7 @@ tr.grp.open .gicon { border-color: var(--accent); color: var(--accent); }
   .lead .down { color: var(--bear); }
 .etf { font-weight: 600; color: var(--accent); }
 .basket { color: var(--muted); font-style: italic; }
+#rs-svg rect.hit.drill { cursor: pointer; }
 .hit-sym { background: var(--neut-wash); color: var(--accent); border-radius: 3px; padding: 0 3px; }
 .empty { color: var(--muted); text-align: center !important; padding: 28px !important; }
 
@@ -172,7 +177,7 @@ footer a { color: var(--accent); text-decoration: none; }
   .search input { width: 100px; }
   .status { display: none; }
   .tbl-groups th:first-child, .tbl-groups td:first-child { min-width: 150px; }
-  .gname { max-width: 150px; }
+  .gname { max-width: 170px; }
 }
 </style>
 </head>
@@ -222,6 +227,7 @@ footer a { color: var(--accent); text-decoration: none; }
     <button class="tab" role="tab" data-cat="EqWt">EqWt</button>
     <button class="tab" role="tab" data-cat="Country">Country</button>
     <div class="colmode" id="col-mode" role="group" aria-label="Columns shown">
+      <button class="tab" id="expand-all" type="button">Expand all</button>
       <button class="tab" data-cols="core">Performance</button>
       <button class="tab" data-cols="all">All columns</button>
     </div>
@@ -388,7 +394,7 @@ function renderRSChart() {
     const v = g.rs_1m, col = sgnColor(v);
     const x0 = Math.min(zero, x(v)), w = Math.max(1.5, Math.abs(x(v) - zero));
     const r = Math.min(4, w / 2);
-    bars += `<rect class="hit" data-i="${i}" x="0" y="${y - 3}" width="${W}" height="${ROW_H + 2}" fill="transparent"/>`;
+    bars += `<rect class="hit${g.members.length ? ' drill' : ''}" data-i="${i}" x="0" y="${y - 3}" width="${W}" height="${ROW_H + 2}" fill="transparent"/>`;
     bars += `<text x="${LABEL_W - 10}" y="${y + h / 2 + 4}" text-anchor="end" font-size="11.5" fill="var(--ink-2)">${esc(g.name)}</text>`;
     bars += `<rect x="${x0.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h}" rx="${r.toFixed(1)}" fill="${col}"/>`;
     if (i < 3 || i >= data.length - 3) {
@@ -406,7 +412,8 @@ function renderRSChart() {
       tip.innerHTML = `<strong>${esc(g.name)}</strong> ${g.etf ? '(' + esc(g.etf) + ')' : '<i>basket</i>'}<br>` +
         `vs S&amp;P, 1 month: <span style="color:${sgnColor(g.rs_1m)}">${signed(g.rs_1m)}%</span><br>` +
         `Today ${has(g.chg_1d) ? signed(g.chg_1d, 2) + '%' : '&ndash;'} &middot; 1M ${has(g.chg_1m) ? signed(g.chg_1m, 2) + '%' : '&ndash;'}` +
-        (has(g.pct_above_50) ? `<br>${g.pct_above_50}% of its stocks above the 50-day` : '');
+        (has(g.pct_above_50) ? `<br>${g.pct_above_50}% of its stocks above the 50-day` : '') +
+        (g.members.length ? `<br><span style="color:var(--muted)">Click to see its ${g.members.length} stocks</span>` : '');
       tip.classList.add('show');
       const bx = box.getBoundingClientRect();
       let lx = (evt.clientX - bx.left) + 14;
@@ -415,6 +422,17 @@ function renderRSChart() {
       tip.style.top = Math.max(0, evt.clientY - bx.top - tip.offsetHeight - 10) + 'px';
     });
     el.addEventListener('mouseleave', () => tip.classList.remove('show'));
+    el.addEventListener('click', () => {
+      const g = data[+el.dataset.i];
+      if (!g.members.length) return;
+      const id = g.etf || g.name;
+      OPEN.add(id);
+      tip.classList.remove('show');
+      setView('table', true);
+      renderGroupTable();
+      const row = [...document.querySelectorAll('#grp-body tr.grp')].find(r => r.dataset.id === id);
+      if (row) row.scrollIntoView({ block: 'center' });
+    });
   });
 }
 
@@ -488,7 +506,7 @@ function renderGroupTable() {
   for (const g of rows) {
     const id = g.etf || g.name, open = OPEN.has(id) || memberHit(g);
     html += `<tr class="grp${open ? ' open' : ''}" data-id="${esc(id)}">
-      <td><span class="gname" title="${esc(g.name)}"><span class="gicon" aria-hidden="true">${g.members.length ? (open ? '&#9662;' : '&#9656;') : ''}</span>${esc(g.name)}</span></td>
+      <td><span class="gname" title="${esc(g.name)}"><span class="gicon" aria-hidden="true">${g.members.length ? (open ? '&#9662;' : '&#9656;') : ''}</span><span class="gtext">${esc(g.name)}</span>${g.members.length ? `<span class="gcount mono">(${g.members.length})</span>` : ''}</span></td>
       <td class="x" style="text-align:left">${g.etf ? `<span class="etf">${esc(g.etf)}</span>` : `<span class="basket">${g.sector ? esc(g.sector) : 'basket'}</span>`}</td>
       <td class="x" style="text-align:left">${setupPill(g.setup)}</td>
       ${COLS.map(([k, , x]) => `<td class="${x ? 'mono x' : 'perf num'}">${cell(g, k)}</td>`).join('')}
@@ -507,7 +525,17 @@ function renderGroupTable() {
   }
   if (!rows.length) html = `<tr><td class="empty" colspan="${COLS.length + 5}">No group or ticker matches &ldquo;${esc(QUERY)}&rdquo;.</td></tr>`;
   document.getElementById('grp-body').innerHTML = html;
+  const drill = rows.filter(g => g.members.length);
+  const btn = document.getElementById('expand-all');
+  btn.hidden = !drill.length;
+  btn.textContent = drill.length && drill.every(g => OPEN.has(g.etf || g.name)) ? 'Collapse all' : 'Expand all';
 }
+document.getElementById('expand-all').addEventListener('click', () => {
+  const drill = groups().filter(g => g.members.length).map(g => g.etf || g.name);
+  const allOpen = drill.every(id => OPEN.has(id));
+  drill.forEach(id => allOpen ? OPEN.delete(id) : OPEN.add(id));
+  renderGroupTable();
+});
 
 function renderSetupTables() {
   const groupOf = {};
