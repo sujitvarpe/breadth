@@ -2,6 +2,21 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<script>
+// Always show the latest publish: browsers may hold this file for 10 minutes.
+(function () {
+  var V = "4967418fdc", P = "index.html";
+  fetch("version.json?t=" + Date.now(), { cache: "no-store" })
+    .then(function (r) { return r.json(); })
+    .then(function (v) {
+      var cur = v[P];
+      if (!cur || cur === V) return;
+      if (new URLSearchParams(location.search).get("v") === cur) return;  // no reload loop
+      location.replace(location.pathname + "?v=" + cur + location.hash);
+    })
+    .catch(function () {});
+})();
+</script>
 <title>sujitvarpe/breadth</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
