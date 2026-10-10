@@ -5,7 +5,7 @@
 <script>
 // Always show the latest publish: browsers may hold this file for 10 minutes.
 (function () {
-  var V = "4d451d331f", P = "tvscan.html";
+  var V = "7d086d944e", P = "tvscan.html";
   fetch("version.json?t=" + Date.now(), { cache: "no-store" })
     .then(function (r) { return r.json(); })
     .then(function (v) {
@@ -273,6 +273,23 @@ a.sym:hover { text-decoration: underline; }
 .lb-t { font-size: 11.5px; }
 .lb-t td { padding: 3px 4px; border-bottom: 1px solid var(--grid); line-height: 17px; }
 .lb-t .hd td { color: var(--muted); font-size: 10px; border-bottom: 0; }
+.run { font: inherit; font-size: 13px; font-weight: 700; padding: 8px 18px; border-radius: 8px; border: 0; cursor: pointer;
+  background: var(--accent); color: var(--accent-ink); white-space: nowrap; }
+.run[disabled] { opacity: .6; cursor: progress; }
+.run-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 14px 4px; }
+.run-row .msg { font-size: 12px; color: var(--muted); }
+.run-row .msg.err { color: var(--bear); }
+.fld { display: flex; flex-direction: column; gap: 3px; }
+.fld span { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.fld input, .fld select { font: inherit; font-size: 13px; width: 92px; padding: 5px 8px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--page); color: var(--ink); }
+.fld select { width: auto; }
+.sets { display: flex; flex-wrap: wrap; gap: 10px 12px; padding: 8px 14px 0; align-items: flex-end; }
+details.uni { padding: 6px 14px 0; font-size: 12px; color: var(--muted); }
+details.uni summary { cursor: pointer; }
+details.uni .sets { padding: 8px 0 0; }
+.pill { font-size: 10.5px; font-weight: 700; border-radius: 999px; padding: 1px 8px; border: 1px solid currentColor; margin-right: 6px; }
+.pill.live { color: var(--bull); } .pill.stored { color: var(--muted); }
 .caveat { font-size: 12px; color: var(--muted); padding: 10px 14px; border-top: 1px solid var(--border); line-height: 1.6; }
 </style>
 </head>
@@ -305,6 +322,9 @@ a.sym:hover { text-decoration: underline; }
   <div class="ctl"><span class="lbl">Timeframe</span><span id="tfs" style="display:contents"></span></div>
   <div class="ctl" id="scans"></div>
   <div class="about" id="about"></div>
+  <div class="sets" id="params"></div>
+  <details class="uni" id="uni-box"><summary>Universe filters</summary><div class="sets" id="uni"></div></details>
+  <div class="run-row"><button class="run" id="run" onclick="runLive()">&#9654; Run scan</button><span class="msg" id="run-msg"></span></div>
   <div class="ctl" id="tiers" style="padding-top:2px"></div>
   <div class="meta" id="meta"></div>
   <div class="note" id="note" hidden></div>
@@ -317,8 +337,8 @@ a.sym:hover { text-decoration: underline; }
     </table>
   </div>
   <div class="caveat">
-    A stored copy of each scan at its default settings, rebuilt with every publish &mdash; it cannot run a scan live or take
-    custom settings. Scans are screens, not tested signals. Tap a heading to sort, a ticker for its chart.
+    The page opens on a stored copy of each scan at its default settings. <b>Run scan</b> fetches the market from TradingView
+    in your browser, right now, with the settings above. Scans are screens, not tested signals. Tap a heading to sort, a ticker for its chart.
   </div>
 </div>
 
@@ -330,7 +350,405 @@ a.sym:hover { text-decoration: underline; }
 </div>
 
 <script>
-const DATA = {"built":"2026-10-10T19:03:48+00:00","scans":[{"key":"top_gainers","title":"Top gainers","group":"screen","description":"Biggest % movers vs previous close.","params":{}},{"key":"top_losers","title":"Top losers","group":"screen","description":"Worst performers \u2014 shorts or dip hunts.","params":{}},{"key":"smart_volume_scanner","title":"Smart volume","group":"screen","description":"Relative volume + price move + RSI band. Tags breakout vs accumulate.","params":{"min_volume_ratio":2.0,"min_price_change":2.0,"rsi_min":0,"rsi_max":100}},{"key":"volume_breakout_scanner","title":"Volume breakout","group":"screen","description":"Volume spike AND close above the upper Bollinger Band.","params":{"volume_multiplier":2.0,"price_change_min":3.0}},{"key":"rating_filter","title":"BB rating","group":"momentum","description":"Bollinger Band position rating \u22123\u2026+3 (+3 = above upper band).","params":{"rating":2}},{"key":"consecutive_candles_scan","title":"Consecutive candles","group":"momentum","description":"Streak of rising (or falling) candles, each closing beyond the last.","params":{"pattern_type":"bullish","candle_count":3,"min_growth":2.0}},{"key":"candle_patterns","title":"Candle patterns","group":"momentum","description":"TradingView-detected candlestick patterns on the current bar.","params":{"pattern_type":"bullish"}},{"key":"tv_rating","title":"TV technical rating","group":"momentum","description":"TradingView's Recommend.All (MA + oscillator vote), strongest first.","params":{"min_rating":0.5}},{"key":"bollinger_scan","title":"Bollinger squeeze","group":"volatility","description":"Tightest Bollinger Band Width \u2014 coiled, pre-breakout.","params":{"bbw_threshold":0.08}},{"key":"new_highs","title":"Near 52w high","group":"trend","description":"Within X% of the 52-week high with the trend stack intact (close > EMA50 > EMA200).","params":{"within_pct":3.0}},{"key":"rs_leaders","title":"RS leaders","group":"strength","description":"RS Rating \u2265 X (stronger than X% of this universe), trend stack up (close > EMA50 > EMA200), near the 52-week high; crypto: beating BTCUSDT over both 1M and 3M. RS ranked within each market-cap tier by default, grouped by tier.","params":{"min_rating":80,"max_off_high":25.0,"rank_within":"tier","per_tier":10}},{"key":"leaderboard","title":"Leaderboard","group":"strength","description":"Leaders & laggards per market-cap tier for today / week / month, plus the best long and short tickers for a day trade, a swing and a hold. Always daily bars.","params":{}},{"key":"rs_ranking","title":"RS ranking","group":"strength","description":"Every name in each market-cap tier ranked strongest to weakest, with a verdict vs the benchmark (BTCUSDT for crypto, SPY / NIFTY for stocks). Leader = top half of its tier and ahead of the benchmark over 1M and 3M; Laggard = bottom half and behind over both; 'pulling back' / 'turning up' when rank and recent trend disagree.","params":{"rank_within":"tier","per_tier":25}},{"key":"rs_laggards","title":"RS laggards","group":"strength","description":"RS Rating \u2264 X, trend stack down (close < EMA50 < EMA200), well off the high; crypto: trailing BTCUSDT over both 1M and 3M. RS ranked within each market-cap tier by default, grouped by tier.","params":{"max_rating":20,"min_off_high":25.0,"rank_within":"tier","per_tier":10}}],"markets":[["us","US stocks"],["india","India (NSE)"],["crypto","Crypto"]],"timeframes":["15m","1h","4h","1D","1W"],"tiers":{"us":["Mega","Large","Mid","Small"],"india":["Large","Mid","Small"],"crypto":["Large","Mid","Small","Micro"]},"universe":{"us":{"min_price":5.0,"min_avg_vol":500000,"min_mcap":300000000.0},"india":{"min_price":20.0,"min_avg_vol":100000,"min_mcap":10000000000.0},"crypto":{"min_price":0.0,"min_24h_vol":1000000,"kind":"spot"}},"rows":50,"files":{"us_15m":"2026-10-10T19:03:12+00:00","us_1h":"2026-10-10T19:03:14+00:00","us_4h":"2026-10-10T19:03:16+00:00","us_1D":"2026-10-10T19:03:18+00:00","us_1W":"2026-10-10T19:03:20+00:00","india_15m":"2026-10-10T19:03:23+00:00","india_1h":"2026-10-10T19:03:25+00:00","india_4h":"2026-10-10T19:03:26+00:00","india_1D":"2026-10-10T19:03:28+00:00","india_1W":"2026-10-10T19:03:30+00:00","crypto_15m":"2026-10-10T19:03:36+00:00","crypto_1h":"2026-10-10T19:03:41+00:00","crypto_4h":"2026-10-10T19:03:43+00:00","crypto_1D":"2026-10-10T19:03:45+00:00","crypto_1W":"2026-10-10T19:03:47+00:00"},"snapshot":[{"ticker":"SP:SPX","name":"S&P 500","close":7811.54,"change":0.594692,"update_mode":"delayed_streaming_600"},{"ticker":"NASDAQ:NDX","name":"Nasdaq 100","close":30883.1,"change":0.512072,"update_mode":"delayed_streaming_900"},{"ticker":"DJ:DJI","name":"Dow","close":51654.9,"change":0.826267,"update_mode":"delayed_streaming_600"},{"ticker":"TVC:RUT","name":"Russell 2000","close":2806.98,"change":0.460018,"update_mode":"streaming"},{"ticker":"CBOE:VIX","name":"VIX","close":14.84,"change":-3.6989,"update_mode":"delayed_streaming_900"},{"ticker":"NSE:NIFTY","name":"Nifty 50","close":22520.5,"change":1.29837,"update_mode":"delayed_streaming_900"},{"ticker":"NSE:BANKNIFTY","name":"Bank Nifty","close":55256.7,"change":1.36036,"update_mode":"delayed_streaming_900"},{"ticker":"BITSTAMP:BTCUSD","name":"BTC","close":82949.4,"change":0.467252,"update_mode":"streaming"},{"ticker":"BITSTAMP:ETHUSD","name":"ETH","close":2510.08,"change":0.986092,"update_mode":"streaming"},{"ticker":"COINBASE:SOLUSD","name":"SOL","close":110.17,"change":1.01779,"update_mode":"streaming"},{"ticker":"TVC:DXY","name":"DXY","close":102.232,"change":0.115557,"update_mode":"streaming"},{"ticker":"FX_IDC:USDINR","name":"USD/INR","close":96.78,"change":0.0,"update_mode":"streaming"},{"ticker":"FX:EURUSD","name":"EUR/USD","close":1.11984,"change":-0.111499,"update_mode":"streaming"},{"ticker":"TVC:GOLD","name":"Gold","close":4193.84,"change":1.46309,"update_mode":"streaming"},{"ticker":"NYMEX:CL1!","name":"WTI crude","close":91.85,"change":0.393486,"update_mode":"delayed_streaming_600"},{"ticker":"TVC:US10Y","name":"US 10Y","close":5.242,"change":0.133715,"update_mode":"streaming"}],"base":"https://raw.githubusercontent.com/sujitvarpe/breadth/0f9fa4bde613a14cfd3bf5683481e8ba7c01c16e/","fallback":"https://raw.githubusercontent.com/sujitvarpe/breadth/tvscan-data/"};
+const DATA = {"built":"2026-10-10T19:23:32+00:00","scans":[{"key":"top_gainers","title":"Top gainers","group":"screen","description":"Biggest % movers vs previous close.","params":{}},{"key":"top_losers","title":"Top losers","group":"screen","description":"Worst performers \u2014 shorts or dip hunts.","params":{}},{"key":"smart_volume_scanner","title":"Smart volume","group":"screen","description":"Relative volume + price move + RSI band. Tags breakout vs accumulate.","params":{"min_volume_ratio":2.0,"min_price_change":2.0,"rsi_min":0,"rsi_max":100}},{"key":"volume_breakout_scanner","title":"Volume breakout","group":"screen","description":"Volume spike AND close above the upper Bollinger Band.","params":{"volume_multiplier":2.0,"price_change_min":3.0}},{"key":"rating_filter","title":"BB rating","group":"momentum","description":"Bollinger Band position rating \u22123\u2026+3 (+3 = above upper band).","params":{"rating":2}},{"key":"consecutive_candles_scan","title":"Consecutive candles","group":"momentum","description":"Streak of rising (or falling) candles, each closing beyond the last.","params":{"pattern_type":"bullish","candle_count":3,"min_growth":2.0}},{"key":"candle_patterns","title":"Candle patterns","group":"momentum","description":"TradingView-detected candlestick patterns on the current bar.","params":{"pattern_type":"bullish"}},{"key":"tv_rating","title":"TV technical rating","group":"momentum","description":"TradingView's Recommend.All (MA + oscillator vote), strongest first.","params":{"min_rating":0.5}},{"key":"bollinger_scan","title":"Bollinger squeeze","group":"volatility","description":"Tightest Bollinger Band Width \u2014 coiled, pre-breakout.","params":{"bbw_threshold":0.08}},{"key":"new_highs","title":"Near 52w high","group":"trend","description":"Within X% of the 52-week high with the trend stack intact (close > EMA50 > EMA200).","params":{"within_pct":3.0}},{"key":"rs_leaders","title":"RS leaders","group":"strength","description":"RS Rating \u2265 X (stronger than X% of this universe), trend stack up (close > EMA50 > EMA200), near the 52-week high; crypto: beating BTCUSDT over both 1M and 3M. RS ranked within each market-cap tier by default, grouped by tier.","params":{"min_rating":80,"max_off_high":25.0,"rank_within":"tier","per_tier":10}},{"key":"leaderboard","title":"Leaderboard","group":"strength","description":"Leaders & laggards per market-cap tier for today / week / month, plus the best long and short tickers for a day trade, a swing and a hold. Always daily bars.","params":{}},{"key":"rs_ranking","title":"RS ranking","group":"strength","description":"Every name in each market-cap tier ranked strongest to weakest, with a verdict vs the benchmark (BTCUSDT for crypto, SPY / NIFTY for stocks). Leader = top half of its tier and ahead of the benchmark over 1M and 3M; Laggard = bottom half and behind over both; 'pulling back' / 'turning up' when rank and recent trend disagree.","params":{"rank_within":"tier","per_tier":25}},{"key":"rs_laggards","title":"RS laggards","group":"strength","description":"RS Rating \u2264 X, trend stack down (close < EMA50 < EMA200), well off the high; crypto: trailing BTCUSDT over both 1M and 3M. RS ranked within each market-cap tier by default, grouped by tier.","params":{"max_rating":20,"min_off_high":25.0,"rank_within":"tier","per_tier":10}}],"markets":[["us","US stocks"],["india","India (NSE)"],["crypto","Crypto"]],"timeframes":["15m","1h","4h","1D","1W"],"tiers":{"us":["Mega","Large","Mid","Small"],"india":["Large","Mid","Small"],"crypto":["Large","Mid","Small","Micro"]},"universe":{"us":{"min_price":5.0,"min_avg_vol":500000,"min_mcap":300000000.0},"india":{"min_price":20.0,"min_avg_vol":100000,"min_mcap":10000000000.0},"crypto":{"min_price":0.0,"min_24h_vol":1000000,"kind":"spot"}},"rows":50,"files":{"us_15m":"2026-10-10T19:22:56+00:00","us_1h":"2026-10-10T19:22:58+00:00","us_4h":"2026-10-10T19:23:00+00:00","us_1D":"2026-10-10T19:23:02+00:00","us_1W":"2026-10-10T19:23:04+00:00","india_15m":"2026-10-10T19:23:07+00:00","india_1h":"2026-10-10T19:23:09+00:00","india_4h":"2026-10-10T19:23:11+00:00","india_1D":"2026-10-10T19:23:12+00:00","india_1W":"2026-10-10T19:23:14+00:00","crypto_15m":"2026-10-10T19:23:19+00:00","crypto_1h":"2026-10-10T19:23:25+00:00","crypto_4h":"2026-10-10T19:23:26+00:00","crypto_1D":"2026-10-10T19:23:28+00:00","crypto_1W":"2026-10-10T19:23:30+00:00"},"snapshot":[{"ticker":"SP:SPX","name":"S&P 500","close":7811.54,"change":0.594692,"update_mode":"delayed_streaming_600"},{"ticker":"NASDAQ:NDX","name":"Nasdaq 100","close":30883.1,"change":0.512072,"update_mode":"delayed_streaming_900"},{"ticker":"DJ:DJI","name":"Dow","close":51654.9,"change":0.826267,"update_mode":"delayed_streaming_600"},{"ticker":"TVC:RUT","name":"Russell 2000","close":2806.98,"change":0.460018,"update_mode":"streaming"},{"ticker":"CBOE:VIX","name":"VIX","close":14.84,"change":-3.6989,"update_mode":"delayed_streaming_900"},{"ticker":"NSE:NIFTY","name":"Nifty 50","close":22520.5,"change":1.29837,"update_mode":"delayed_streaming_900"},{"ticker":"NSE:BANKNIFTY","name":"Bank Nifty","close":55256.7,"change":1.36036,"update_mode":"delayed_streaming_900"},{"ticker":"BITSTAMP:BTCUSD","name":"BTC","close":82946.4,"change":0.463667,"update_mode":"streaming"},{"ticker":"BITSTAMP:ETHUSD","name":"ETH","close":2510.91,"change":1.01948,"update_mode":"streaming"},{"ticker":"COINBASE:SOLUSD","name":"SOL","close":110.34,"change":1.17367,"update_mode":"streaming"},{"ticker":"TVC:DXY","name":"DXY","close":102.232,"change":0.115557,"update_mode":"streaming"},{"ticker":"FX_IDC:USDINR","name":"USD/INR","close":96.78,"change":0.0,"update_mode":"streaming"},{"ticker":"FX:EURUSD","name":"EUR/USD","close":1.11984,"change":-0.111499,"update_mode":"streaming"},{"ticker":"TVC:GOLD","name":"Gold","close":4193.84,"change":1.46309,"update_mode":"streaming"},{"ticker":"NYMEX:CL1!","name":"WTI crude","close":91.85,"change":0.393486,"update_mode":"delayed_streaming_600"},{"ticker":"TVC:US10Y","name":"US 10Y","close":5.242,"change":0.133715,"update_mode":"streaming"}],"base":"https://raw.githubusercontent.com/sujitvarpe/breadth/b466a90f15bb8c8f119a21b79aad0f0be59a4af9/","fallback":"https://raw.githubusercontent.com/sujitvarpe/breadth/tvscan-data/","cfg":{"scans":[{"key":"top_gainers","title":"Top gainers","group":"screen","description":"Biggest % movers vs previous close.","params":{}},{"key":"top_losers","title":"Top losers","group":"screen","description":"Worst performers \u2014 shorts or dip hunts.","params":{}},{"key":"smart_volume_scanner","title":"Smart volume","group":"screen","description":"Relative volume + price move + RSI band. Tags breakout vs accumulate.","params":{"min_volume_ratio":2.0,"min_price_change":2.0,"rsi_min":0,"rsi_max":100}},{"key":"volume_breakout_scanner","title":"Volume breakout","group":"screen","description":"Volume spike AND close above the upper Bollinger Band.","params":{"volume_multiplier":2.0,"price_change_min":3.0}},{"key":"rating_filter","title":"BB rating","group":"momentum","description":"Bollinger Band position rating \u22123\u2026+3 (+3 = above upper band).","params":{"rating":2}},{"key":"consecutive_candles_scan","title":"Consecutive candles","group":"momentum","description":"Streak of rising (or falling) candles, each closing beyond the last.","params":{"pattern_type":"bullish","candle_count":3,"min_growth":2.0}},{"key":"candle_patterns","title":"Candle patterns","group":"momentum","description":"TradingView-detected candlestick patterns on the current bar.","params":{"pattern_type":"bullish"}},{"key":"tv_rating","title":"TV technical rating","group":"momentum","description":"TradingView's Recommend.All (MA + oscillator vote), strongest first.","params":{"min_rating":0.5}},{"key":"bollinger_scan","title":"Bollinger squeeze","group":"volatility","description":"Tightest Bollinger Band Width \u2014 coiled, pre-breakout.","params":{"bbw_threshold":0.08}},{"key":"new_highs","title":"Near 52w high","group":"trend","description":"Within X% of the 52-week high with the trend stack intact (close > EMA50 > EMA200).","params":{"within_pct":3.0}},{"key":"rs_leaders","title":"RS leaders","group":"strength","description":"RS Rating \u2265 X (stronger than X% of this universe), trend stack up (close > EMA50 > EMA200), near the 52-week high; crypto: beating BTCUSDT over both 1M and 3M. RS ranked within each market-cap tier by default, grouped by tier.","params":{"min_rating":80,"max_off_high":25.0,"rank_within":"tier","per_tier":10}},{"key":"leaderboard","title":"Leaderboard","group":"strength","description":"Leaders & laggards per market-cap tier for today / week / month, plus the best long and short tickers for a day trade, a swing and a hold. Always daily bars.","params":{}},{"key":"rs_ranking","title":"RS ranking","group":"strength","description":"Every name in each market-cap tier ranked strongest to weakest, with a verdict vs the benchmark (BTCUSDT for crypto, SPY / NIFTY for stocks). Leader = top half of its tier and ahead of the benchmark over 1M and 3M; Laggard = bottom half and behind over both; 'pulling back' / 'turning up' when rank and recent trend disagree.","params":{"rank_within":"tier","per_tier":25}},{"key":"rs_laggards","title":"RS laggards","group":"strength","description":"RS Rating \u2264 X, trend stack down (close < EMA50 < EMA200), well off the high; crypto: trailing BTCUSDT over both 1M and 3M. RS ranked within each market-cap tier by default, grouped by tier.","params":{"max_rating":20,"min_off_high":25.0,"rank_within":"tier","per_tier":10}}],"timeframes":{"15m":"|15","1h":"|60","4h":"|240","1D":"","1W":"|1W"},"markets":{"us":{"label":"US stocks","tv":"america","currency":"$"},"india":{"label":"India (NSE)","tv":"india","currency":"\u20b9"},"crypto":{"label":"Crypto","tv":"crypto","currency":"$"}},"tiers":{"us":["Mega","Large","Mid","Small"],"india":["Large","Mid","Small"],"crypto":["Large","Mid","Small","Micro"]},"universe":{"us":{"min_price":5.0,"min_avg_vol":500000,"min_mcap":300000000.0},"india":{"min_price":20.0,"min_avg_vol":100000,"min_mcap":10000000000.0},"crypto":{"min_price":0.0,"min_24h_vol":1000000,"kind":"spot"}},"universe_cap":5000,"bull":{"Candle.Engulfing.Bullish":"Bull engulfing","Candle.3WhiteSoldiers":"3 white soldiers","Candle.Hammer":"Hammer","Candle.MorningStar":"Morning star","Candle.Harami.Bullish":"Bull harami","Candle.Kicking.Bullish":"Bull kicker","Candle.InvertedHammer":"Inverted hammer","Candle.Doji.Dragonfly":"Dragonfly doji","Candle.AbandonedBaby.Bullish":"Abandoned baby"},"bear":{"Candle.Engulfing.Bearish":"Bear engulfing","Candle.3BlackCrows":"3 black crows","Candle.HangingMan":"Hanging man","Candle.EveningStar":"Evening star","Candle.Harami.Bearish":"Bear harami","Candle.Kicking.Bearish":"Bear kicker","Candle.ShootingStar":"Shooting star","Candle.Doji.Gravestone":"Gravestone doji","Candle.AbandonedBaby.Bearish":"Abandoned baby (bear)"},"rs_weights":{"us":{"Perf.3M":2,"Perf.6M":1,"Perf.Y":1},"india":{"Perf.3M":2,"Perf.6M":1,"Perf.Y":1},"crypto":{"Perf.1M":2,"Perf.3M":1,"Perf.6M":1}},"benchmark":{"us":["AMEX:SPY","SPY","america"],"india":["NSE:NIFTY","NIFTY","india"],"crypto":["CRYPTO:BTCUSD","BTC","coin"]},"bench_fields":{"d":"change","w":"Perf.W","1m":"Perf.1M","3m":"Perf.3M","6m":"Perf.6M"},"playbook":{"day":{"title":"Day trade","horizon":"today","long":"Top 10% today \u00b7 volume \u2265 1.5\u00d7 normal \u00b7 above VWAP \u00b7 closing in the top 40% of the day's range \u00b7 ATR \u2265 2%","short":"Bottom 10% today \u00b7 volume \u2265 1.5\u00d7 \u00b7 below VWAP \u00b7 closing in the bottom 40% of the range \u00b7 ATR \u2265 2%"},"swing":{"title":"Swing","horizon":"days to weeks","long":"Top 30% on week and month \u00b7 RS Rating \u2265 60 \u00b7 close > EMA50 > EMA200 \u00b7 RSI 50\u201370 \u00b7 within 1.5 ATR of the 20-day","short":"Bottom 30% on week and month \u00b7 RS Rating \u2264 40 \u00b7 close < EMA50 < EMA200 \u00b7 RSI 30\u201350 \u00b7 within 1.5 ATR of the 20-day"},"hold":{"title":"Hold","horizon":"weeks to months","long":"RS Rating \u2265 85 \u00b7 top half this month \u00b7 close > EMA50 > EMA200 \u00b7 within 15% of the 52-week high","short":"RS Rating \u2264 15 \u00b7 bottom half this month \u00b7 close < EMA50 < EMA200 \u00b7 30%+ below the 52-week high"}},"playbook_crypto":{"day":{"title":"Day trade","horizon":"today","long":"Beating BTC today by 3%+ \u00b7 volume \u2265 1.5\u00d7 normal \u00b7 above VWAP \u00b7 closing in the top 40% of the day's range \u00b7 ATR \u2265 2%","short":"Trailing BTC today by 3%+ \u00b7 volume \u2265 1.5\u00d7 \u00b7 below VWAP \u00b7 closing in the bottom 40% of the range \u00b7 ATR \u2265 2%"},"swing":{"title":"Swing","horizon":"days to weeks","long":"Beating BTC over the week and the month \u00b7 close > EMA50 > EMA200 \u00b7 RSI 50\u201370 \u00b7 within 1.5 ATR of the 20-day","short":"Trailing BTC over the week and the month \u00b7 close < EMA50 < EMA200 \u00b7 RSI 30\u201350 \u00b7 within 1.5 ATR of the 20-day"},"hold":{"title":"Hold","horizon":"weeks to months","long":"Beating BTC over 1M, 3M and 6M \u00b7 close > EMA50 > EMA200 \u00b7 within 30% of the 52-week high","short":"Trailing BTC over 1M, 3M and 6M \u00b7 close < EMA50 < EMA200"}},"board_n":5,"ideas_n":12,"pegged":["AEUR","BFUSD","DAI","EUR","EURI","FDUSD","FRAX","GUSD","KAU","LUSD","PAXG","PYUSD","RLUSD","TUSD","USD1","USDC","USDD","USDE","USDP","USDS","USDT","XAUM","XAUT","XUSD"],"snapshot":{"SP:SPX":"S&P 500","NASDAQ:NDX":"Nasdaq 100","DJ:DJI":"Dow","TVC:RUT":"Russell 2000","CBOE:VIX":"VIX","NSE:NIFTY":"Nifty 50","NSE:BANKNIFTY":"Bank Nifty","BITSTAMP:BTCUSD":"BTC","BITSTAMP:ETHUSD":"ETH","COINBASE:SOLUSD":"SOL","TVC:DXY":"DXY","FX_IDC:USDINR":"USD/INR","FX:EURUSD":"EUR/USD","TVC:GOLD":"Gold","NYMEX:CL1!":"WTI crude","TVC:US10Y":"US 10Y"},"crypto_exchanges":["BINANCE","BYBIT","COINBASE","OKX","KUCOIN","BITGET","MEXC","GATEIO"]}};
+// TV Scan engine: the browser-side twin of swing_screener/core/tv_scanner.py.
+//
+// The published page cannot run Python, but TradingView's scanner accepts requests straight from
+// the page, so "Run scan" fetches the universe here and applies the same filters in JavaScript.
+// Every rule below mirrors a line of tv_scanner.py — change one, change the other, then run
+// share_page/test_tvscan_parity.py, which feeds both the same data and compares the results.
+//
+// All constants (patterns, RS weights, tiers, playbook wording, universe floors) arrive from Python
+// in TVScan.init(cfg), so there is one source of truth.
+const TVScan = (function () {
+  let C = null;
+  const init = (cfg) => { C = cfg; };
+
+  // ── pandas-compatible helpers ──────────────────────────────────────────────
+  // Missing values are NaN throughout: every comparison with NaN is false, exactly as in pandas.
+  const num = (v) => (v === null || v === undefined || v === '' || typeof v === 'boolean') ? NaN : +v;
+  const out = (v) => Number.isFinite(v) ? v : null;                 // _num(): NaN -> null for the result rows
+  const between = (v, a, b) => v >= a && v <= b;
+  const roundEven = (x) => { const r = Math.round(x); return Math.abs(x % 1) === 0.5 && r % 2 ? r - 1 : r; };
+
+  // Series.rank(pct=True): average rank among the non-missing values, divided by their count.
+  function rankPct(vals) {
+    const idx = vals.map((v, i) => i).filter(i => !Number.isNaN(vals[i])).sort((a, b) => vals[a] - vals[b]);
+    const res = vals.map(() => NaN);
+    for (let i = 0; i < idx.length;) {
+      let j = i;
+      while (j + 1 < idx.length && vals[idx[j + 1]] === vals[idx[i]]) j++;
+      const avg = (i + j) / 2 + 1;
+      for (let k = i; k <= j; k++) res[idx[k]] = avg / idx.length;
+      i = j + 1;
+    }
+    return res;
+  }
+  // (rank * 99).clip(1, 99).round()
+  const pctile = (vals) => rankPct(vals).map(p => Number.isNaN(p) ? NaN : roundEven(Math.min(99, Math.max(1, p * 99))));
+  // sort_values(key, ascending, na_position="last"), stable
+  function sortBy(rows, key, asc) {
+    const s = asc ? 1 : -1;
+    return rows.map((r, i) => [r, i]).sort(([a, i], [b, j]) => {
+      const x = num(a[key]), y = num(b[key]);
+      if (Number.isNaN(x) || Number.isNaN(y)) return (Number.isNaN(x) - Number.isNaN(y)) || i - j;
+      return (x - y) * s || i - j;
+    }).map(p => p[0]);
+  }
+
+  // ── TradingView requests ───────────────────────────────────────────────────
+  // A string body with no Content-Type header goes out as text/plain: a "simple" cross-origin
+  // request, which is all TradingView's CORS policy permits (no preflight for custom headers).
+  async function post(path, body) {
+    const r = await fetch(`https://scanner.tradingview.com/${path}/scan`, {method: 'POST', body: JSON.stringify(body)});
+    if (!r.ok) throw new Error(r.status === 429 ? 'TradingView is rate-limiting, try again in a minute' : 'TradingView answered ' + r.status);
+    const j = await r.json();
+    return j.data.map(row => { const o = {ticker: row.s}; body.columns.forEach((c, i) => { o[c] = row.d[i]; }); return o; });
+  }
+  const byTickers = (tickers, columns) => post('global', {markets: [], symbols: {query: {types: []}, tickers},
+    options: {lang: 'en'}, columns, sort: {sortBy: 'Value.Traded', sortOrder: 'desc'}, range: [0, 50]});
+
+  let coinCache = {t: 0, caps: null};
+  async function coinCaps() {
+    if (coinCache.caps && Date.now() - coinCache.t < 600000) return coinCache.caps;
+    const rows = await post('coin', {markets: ['coin'], symbols: {query: {types: []}, tickers: []}, options: {lang: 'en'},
+      columns: ['base_currency', 'market_cap_calc'], sort: {sortBy: 'market_cap_calc', sortOrder: 'desc', nullsFirst: false}, range: [0, 5000]});
+    const caps = {};
+    for (const r of rows) { const c = num(r.market_cap_calc); if (r.base_currency && c && !(r.base_currency in caps)) caps[r.base_currency] = c; }
+    coinCache = {t: Date.now(), caps};
+    return caps;
+  }
+
+  const uniOf = (market, opts) => { const u = {...C.universe[market]};
+    for (const [k, v] of Object.entries(opts || {})) if (v !== null && v !== undefined) u[k] = v; return u; };
+
+  // _fetch_universe + the benchmark and coin-cap lookups _add_strength makes
+  async function fetchData(market, tf, opts) {
+    const sfx = C.timeframes[tf], uni = uniOf(market, opts);
+    const bar = ['open', 'high', 'low', 'close', 'volume', 'change', 'RSI', 'VWAP', 'ATR', 'BB.upper', 'BB.lower', 'SMA20', 'EMA50',
+      'EMA200', 'Recommend.All', 'close[1]', 'open[1]', 'close[2]', 'open[2]', 'close[3]', 'open[3]',
+      ...Object.keys(C.bull), ...Object.keys(C.bear), 'relative_volume_10d_calc'];
+    const stat = ['name', 'description', 'exchange', 'type', 'update_mode', 'average_volume_10d_calc', 'price_52_week_high',
+      'Perf.W', 'Perf.1M', 'Perf.3M', 'Perf.6M', 'Perf.Y',
+      ...(market === 'crypto' ? ['24h_vol|5', 'currency', 'base_currency'] : ['market_cap_basic', 'sector'])];
+    const f = (left, operation, right) => ({left, operation, right});
+    const filter = [f('close', 'egreater', uni.min_price)];
+    let order;
+    if (market === 'crypto') {
+      filter.push(f('exchange', 'equal', String(opts.exchange || 'BINANCE').toUpperCase()), f('24h_vol|5', 'egreater', uni.min_24h_vol),
+        f('currency', 'in_range', ['USDT', 'USDC', 'USD']));
+      order = '24h_vol|5';
+    } else {
+      filter.push(f('type', 'equal', 'stock'), f('average_volume_10d_calc', 'egreater', uni.min_avg_vol), f('market_cap_basic', 'egreater', uni.min_mcap),
+        market === 'india' ? f('exchange', 'equal', 'NSE') : f('exchange', 'in_range', ['NASDAQ', 'NYSE', 'AMEX']));
+      order = 'market_cap_basic';
+    }
+    const pending = [post(C.markets[market].tv, {markets: [C.markets[market].tv], symbols: {query: {types: []}, tickers: []}, options: {lang: 'en'},
+      columns: [...bar.map(c => c + sfx), ...stat], sort: {sortBy: order, sortOrder: 'desc', nullsFirst: false}, range: [0, C.universe_cap], filter})];
+    if (market === 'crypto') pending.push(coinCaps().catch(() => ({})));
+    else pending.push(byTickers([C.benchmark[market][0]], ['name', ...Object.values(C.bench_fields)]).catch(() => []));
+    let [rows, extra] = await Promise.all(pending);
+
+    if (sfx) rows = rows.map(r => { const o = {};
+      for (const [k, v] of Object.entries(r)) o[k.endsWith(sfx) ? k.slice(0, -sfx.length) : k] = v; return o; });
+    let bench = null, caps = null;
+    if (market === 'india') {
+      // InvITs/REITs come back as type=stock; drop them by name.
+      const re = /\bInvIT\b|\bREIT\b|Infra(?:structure)? (?:Investment )?Trust|Investment Trust/i;
+      rows = rows.filter(r => !(r.ticker.endsWith('.RR') || /INVIT/i.test(r.ticker) || re.test(r.description || '')));
+    }
+    if (market === 'crypto') {
+      caps = extra;
+      const perp = uni.kind === 'perp', seen = new Set();
+      rows = rows.filter(r => r.ticker.endsWith('.P') === perp);
+      // One row per coin: the pair with the most 24h volume (already sorted by volume).
+      rows = rows.filter(r => { if (seen.has(r.base_currency)) return false; seen.add(r.base_currency); return true; });
+      rows.forEach(r => { r.dollar_vol = r['24h_vol|5']; delete r['24h_vol|5']; });
+      const pegged = new Set(C.pegged);
+      rows = rows.filter(r => !pegged.has(r.base_currency) && !(num(r.ATR) / num(r.close) * 100 < 0.3));
+      // On short timeframes BTC's own range can fall under that 0.3% floor and drop out with the
+      // stablecoins; then, as in _bench_perf, TradingView's BTC index is the benchmark.
+      extra = rows.some(r => r.base_currency === 'BTC') ? []
+        : await byTickers([C.benchmark[market][0]], ['name', ...Object.values(C.bench_fields)]).catch(() => []);
+    }
+    if (extra.length)
+      bench = {perf: Object.fromEntries(Object.entries(C.bench_fields).map(([k, col]) => [k, out(num(extra[0][col]))])), ticker: C.benchmark[market][0]};
+    return {rows, uni, bench, caps, market, tf, fetched: Date.now()};
+  }
+
+  // ── derived columns ────────────────────────────────────────────────────────
+  function derive(rows) {
+    return rows.map(r0 => {
+      const r = {...r0};
+      const close = num(r.close), up = num(r['BB.upper']), lo = num(r['BB.lower']), mid = num(r.SMA20);
+      r.bbw = (up - lo) / mid;
+      const hu = mid + (up - mid) / 2, hl = mid - (mid - lo) / 2;
+      let rating = 0;
+      if (close > mid) rating = 1; if (close > hu) rating = 2; if (close > up) rating = 3;
+      if (close < mid) rating = -1; if (close < hl) rating = -2; if (close < lo) rating = -3;
+      r.bb_rating = Number.isNaN(close) || Number.isNaN(up) ? NaN : rating;
+      r.rel_vol = num(r.relative_volume_10d_calc);
+      const rng = num(r.high) - num(r.low);
+      r.close_in_range = rng > 0 ? (close - num(r.low)) / rng : NaN;
+      return r;
+    });
+  }
+
+  function tierOf(market, mcap, rank) {
+    if (Number.isNaN(mcap)) return null;
+    if (market === 'us') return mcap >= 200e9 ? 'Mega' : mcap >= 10e9 ? 'Large' : mcap >= 2e9 ? 'Mid' : 'Small';
+    if (market === 'india') return rank <= 100 ? 'Large' : rank <= 250 ? 'Mid' : 'Small';
+    return mcap >= 10e9 ? 'Large' : mcap >= 1e9 ? 'Mid' : mcap >= 100e6 ? 'Small' : 'Micro';
+  }
+
+  // RS Rating, excess returns, market cap and tier for every row of the universe
+  function addStrength(rows, data) {
+    const market = data.market, w = C.rs_weights[market];
+    const score = rows.map(r => Object.entries(w).reduce((s, [c, k]) => s + k * num(r[c]), 0));
+    const rating = pctile(score);
+    let b = Object.fromEntries(Object.keys(C.bench_fields).map(k => [k, null])), benchTicker = C.benchmark[market][0];
+    const btc = market === 'crypto' ? rows.find(r => r.base_currency === 'BTC') : null;
+    if (btc) { b = Object.fromEntries(Object.entries(C.bench_fields).map(([k, col]) => [k, out(num(btc[col]))])); benchTicker = btc.ticker; }
+    else if (data.bench) { b = data.bench.perf; benchTicker = data.bench.ticker; }
+    rows.forEach((r, i) => {
+      r.rs_score = score[i]; r.rs_rating = rating[i];
+      for (const [k, col] of Object.entries(C.bench_fields))
+        r[{d: 'vs_d', w: 'vs_w'}[k] || 'rs_' + k] = b[k] === null ? NaN : num(r[col]) - b[k];
+      if (market === 'crypto') r.rs_btc = (2 * r.rs_1m + r.rs_3m + r.rs_6m) / 4;
+      r.mcap = market === 'crypto' ? num((data.caps || {})[r.base_currency]) : num(r.market_cap_basic);
+    });
+    // rank(ascending=False, method="first")
+    const order = rows.map((r, i) => i).filter(i => !Number.isNaN(rows[i].mcap)).sort((a, b2) => rows[b2].mcap - rows[a].mcap || a - b2);
+    const rank = rows.map(() => NaN);
+    order.forEach((i, k) => { rank[i] = k + 1; });
+    rows.forEach((r, i) => { r.tier = tierOf(market, r.mcap, rank[i]); r.rs_tier = NaN; });
+    // the same score ranked inside each tier
+    for (const t of new Set(rows.map(r => r.tier).filter(Boolean))) {
+      const members = rows.filter(r => r.tier === t), p = pctile(members.map(r => r.rs_score));
+      members.forEach((r, i) => { r.rs_tier = p[i]; });
+    }
+    return benchTicker;
+  }
+
+  function signal(r) {
+    const rv = out(num(r.rel_vol)) || 0, chg = out(num(r.change)) || 0;
+    if (r.bb_rating === 3 && rv >= 1.5 && chg > 0) return 'breakout';
+    if (r.bb_rating === -3 && rv >= 1.5 && chg < 0) return 'breakdown';
+    if (rv >= 1.5 && Math.abs(chg) < 2) return 'accumulate';
+    if ((out(num(r.bbw)) || 1) < 0.05) return 'squeeze';
+    return '';
+  }
+
+  function toRow(r, market) {
+    const o = {ticker: r.ticker, description: r.description, close: out(num(r.close)), change: out(num(r.change)),
+      rel_vol: out(num(r.rel_vol)), rsi: out(num(r.RSI)), bbw: out(num(r.bbw)), bb_rating: out(num(r.bb_rating)),
+      tv_rating: out(num(r['Recommend.All'])), perf_w: out(num(r['Perf.W'])), perf_1m: out(num(r['Perf.1M'])), signal: signal(r),
+      rs_rating: out(num(r.rs_rating)), rs_tier: out(num(r.rs_tier)), rs_1m: out(num(r.rs_1m)), rs_3m: out(num(r.rs_3m)),
+      rs_btc: out(num(r.rs_btc)), vs_d: out(num(r.vs_d)), vs_w: out(num(r.vs_w)), mcap: out(num(r.mcap)), tier: r.tier};
+    for (const k of ['score', 'streak_pct', 'patterns', 'off_high_pct', 'verdict'])
+      if (k in r && r[k] !== null && r[k] !== undefined) o[k] = k === 'patterns' || k === 'verdict' ? r[k] : out(num(r[k]));
+    if (market === 'crypto') o.dollar_vol = out(num(r.dollar_vol));
+    else { o.market_cap = out(num(r.market_cap_basic)); o.sector = r.sector; }
+    return o;
+  }
+
+  // n candles each closing beyond the previous; prior bars TradingView does not return are skipped
+  function consecutive(rows, n, bullish, minGrowth) {
+    const series = (name) => rows.some(r => !Number.isNaN(num(r[name]))) ? name : null;
+    const closes = [], opens = [];
+    for (let k = 0; k <= n; k++) closes.push(series(k ? `close[${k}]` : 'close'));
+    for (let k = 0; k < n; k++) opens.push(series(k ? `open[${k}]` : 'open'));
+    for (let k = 0; k < n; k++) if (!closes[k] || !opens[k]) return [];
+    const base = closes[n] || opens[n - 1], res = [];
+    for (const r of rows) {
+      let ok = true;
+      for (let k = 0; k < n && ok; k++) {
+        const c = num(r[closes[k]]), o = num(r[opens[k]]);
+        ok = bullish ? c > o : c < o;
+        if (ok && closes[k + 1]) { const p = num(r[closes[k + 1]]); ok = bullish ? c > p : c < p; }
+      }
+      const growth = (num(r[closes[0]]) / num(r[base]) - 1) * 100;
+      if (ok && (bullish ? growth >= minGrowth : growth <= -minGrowth)) res.push({...r, streak_pct: growth});
+    }
+    return res;
+  }
+
+  const modeOf = (rows) => { const n = {};
+    for (const r of rows) if (r.update_mode) n[r.update_mode] = (n[r.update_mode] || 0) + 1;
+    return Object.keys(n).sort().sort((a, b) => n[b] - n[a])[0] || null; };
+
+  // ── run_scan ───────────────────────────────────────────────────────────────
+  function compute(scan, data, limit, params, universe) {
+    const {market, tf} = data, t0 = Date.now();
+    if (scan === 'leaderboard') return leaderboard(data, universe);
+    const def = C.scans.find(s => s.key === scan);
+    const p = {...def.params, ...(params || {})};
+    let df = derive(data.rows);
+    const benchTicker = addStrength(df, data);
+    const tier = (universe || {}).cap_tier;
+    if (tier && tier !== 'All') df = df.filter(r => r.tier === tier);
+    const universeN = df.length;
+    const chg = (r) => num(r.change), close = (r) => num(r.close);
+    let key = 'change', asc = false, note = '', groupTiers = false;
+    const trend = (r) => ({e50: num(r.EMA50), e200: num(r.EMA200), off: (close(r) / num(r.price_52_week_high) - 1) * 100});
+
+    if (scan === 'top_gainers') df = df.filter(r => chg(r) > 0);
+    else if (scan === 'top_losers') { df = df.filter(r => chg(r) < 0); asc = true; }
+    else if (scan === 'smart_volume_scanner') {
+      df = df.filter(r => r.rel_vol >= +p.min_volume_ratio && Math.abs(chg(r)) >= +p.min_price_change && between(num(r.RSI), +p.rsi_min, +p.rsi_max))
+             .map(r => ({...r, score: r.rel_vol * Math.abs(chg(r))}));
+      key = 'score';
+    } else if (scan === 'volume_breakout_scanner') {
+      df = df.filter(r => r.rel_vol >= +p.volume_multiplier && chg(r) >= +p.price_change_min && close(r) > num(r['BB.upper']));
+      key = 'rel_vol';
+    } else if (scan === 'rating_filter') { df = df.filter(r => r.bb_rating === Math.trunc(+p.rating)); key = 'rel_vol'; }
+    else if (scan === 'consecutive_candles_scan') {
+      let n = Math.max(2, Math.min(Math.trunc(+p.candle_count), 3));
+      if (tf !== '1D' && n > 2) { n = 2;
+        note = 'TradingView only returns one prior bar outside the daily timeframe, so the streak is capped at 2 candles.'; }
+      df = consecutive(df, n, p.pattern_type !== 'bearish', +p.min_growth);
+      key = 'streak_pct'; asc = p.pattern_type === 'bearish';
+    } else if (scan === 'candle_patterns') {
+      const pats = Object.entries(p.pattern_type === 'bearish' ? C.bear : C.bull);
+      df = df.map(r => ({...r, patterns: pats.filter(([c]) => (num(r[c]) || 0) !== 0).map(([, l]) => l).join(', ')})).filter(r => r.patterns);
+      key = 'rel_vol';
+    } else if (scan === 'tv_rating') { df = df.filter(r => num(r['Recommend.All']) >= +p.min_rating); key = 'Recommend.All'; }
+    else if (scan === 'bollinger_scan') { df = df.filter(r => r.bbw > 0 && r.bbw <= +p.bbw_threshold); key = 'bbw'; asc = true; }
+    else if (scan === 'new_highs') {
+      df = df.filter(r => { const t = trend(r); return close(r) >= num(r.price_52_week_high) * (1 - +p.within_pct / 100) && close(r) > t.e50 && t.e50 > t.e200; })
+             .map(r => ({...r, off_high_pct: trend(r).off}));
+      key = 'Perf.1M';
+    } else if (scan === 'rs_ranking') {
+      let byTier = String(p.rank_within ?? 'tier') === 'tier';
+      let rs = (r) => byTier ? r.rs_tier : r.rs_rating;
+      if (market === 'crypto') { df = df.filter(r => r.base_currency !== 'BTC'); rs = (r) => r.rs_btc; byTier = true; }
+      df = df.map(r => {
+        const ahead = r.rs_1m > 0 && r.rs_3m > 0, behind = r.rs_1m < 0 && r.rs_3m < 0;
+        const strong = market === 'crypto' ? rs(r) > 0 : rs(r) >= 50;
+        const verdict = strong && ahead ? 'Leader' : strong && behind ? 'Leader, pulling back'
+          : !strong && behind ? 'Laggard' : !strong && ahead ? 'Laggard, turning up' : 'Mixed';
+        const r1 = Number.isNaN(r.rs_1m) ? 0 : Math.min(999, Math.max(-999, r.rs_1m));
+        return {...r, verdict, rs_sort: market === 'crypto' ? rs(r) : rs(r) * 1000 + r1};
+      });
+      key = 'rs_sort'; groupTiers = byTier;
+    } else if (scan === 'rs_leaders' || scan === 'rs_laggards') {
+      const lead = scan === 'rs_leaders';
+      let byTier = String(p.rank_within ?? 'tier') === 'tier';
+      let rs = (r) => byTier ? r.rs_tier : r.rs_rating, keep;
+      if (market === 'crypto') {
+        rs = (r) => r.rs_btc; byTier = true;
+        keep = (r) => r.base_currency !== 'BTC' && (lead ? rs(r) > 0 && r.rs_1m > 0 && r.rs_3m > 0 : rs(r) < 0 && r.rs_1m < 0 && r.rs_3m < 0);
+      } else if (lead) keep = (r) => { const t = trend(r); return rs(r) >= +p.min_rating && close(r) > t.e50 && t.e50 > t.e200 && t.off >= -p.max_off_high; };
+      else keep = (r) => { const t = trend(r); return rs(r) <= +p.max_rating && close(r) < t.e50 && t.e50 < t.e200 && t.off <= -p.min_off_high; };
+      // Ratings tie at 99 / 1 across dozens of names; RS 1M breaks the tie.
+      df = df.filter(keep).map(r => ({...r, off_high_pct: trend(r).off,
+        rs_sort: market === 'crypto' ? rs(r) : rs(r) * 1000 + (Number.isNaN(r.rs_1m) ? 0 : Math.min(999, Math.max(-999, r.rs_1m)))}));
+      key = 'rs_sort'; asc = !lead; groupTiers = byTier;
+    } else throw new Error('unknown scan ' + scan);
+
+    const matched = df.length, tiers = C.tiers[market];
+    const tierCounts = Object.fromEntries(tiers.map(t => [t, df.filter(r => r.tier === t).length]));
+    df = sortBy(df, key, asc);
+    if (groupTiers) {
+      // up to per_tier names from every tier, largest tier first
+      const per = Math.max(1, Math.trunc(+(p.per_tier ?? 10)));
+      df = tiers.flatMap(t => df.filter(r => r.tier === t).slice(0, per));
+    } else df = df.slice(0, limit);
+    return {scan, title: def.title, market, timeframe: tf, exchange: market === 'crypto' ? (universe || {}).exchange || null : null,
+      params: p, universe_filter: data.uni, universe_size: universeN, matched, rows: df.map(r => toRow(r, market)), note,
+      tier_counts: tierCounts, tiers, cap_tier: tier || 'All', grouped_by_tier: groupTiers,
+      benchmark: C.benchmark[market][1], benchmark_ticker: benchTicker, update_mode: modeOf(df),
+      elapsed_s: (Date.now() - t0) / 1000, scanned_at: new Date(data.fetched || Date.now()).toISOString()};
+  }
+
+  // ── leaderboard ────────────────────────────────────────────────────────────
+  function leaderboard(data, universe) {
+    const market = data.market, t0 = Date.now();
+    let df = derive(data.rows);
+    const benchTicker = addStrength(df, data);
+    const col = (c) => df.map(r => num(r[c]));
+    const rsD = pctile(col('change')), rsW = pctile(col('Perf.W')), rsM = pctile(col('Perf.1M'));
+    df.forEach((r, i) => {
+      const close = num(r.close), atr = num(r.ATR), e50 = num(r.EMA50), e200 = num(r.EMA200);
+      r.rs_d = rsD[i]; r.rs_w = rsW[i]; r.rs_m = rsM[i];
+      r.atr_pct = atr / close * 100;
+      r.off_high_pct = (close / num(r.price_52_week_high) - 1) * 100;
+      r.ext20 = (close - num(r.SMA20)) / atr;
+      r._up = close > e50 && e50 > e200; r._down = close < e50 && e50 < e200;
+      r._vwap = close > num(r.VWAP); r._rsi = num(r.RSI);
+    });
+    const tier = (universe || {}).cap_tier;
+    if (tier && tier !== 'All') df = df.filter(r => r.tier === tier);
+    const crypto = market === 'crypto', rv4 = (r) => Math.min(4, r.rel_vol);
+    const day = (r) => r.rel_vol >= 1.5 && r.atr_pct >= 2, near20 = (r) => Math.abs(r.ext20) <= 1.5;
+    const top = (r) => r._vwap && r.close_in_range >= 0.6, bottom = (r) => !r._vwap && r.close_in_range <= 0.4;
+    const nb = (r) => r.base_currency !== 'BTC';
+    const rules = crypto ? {
+      day:   [r => nb(r) && r.vs_d >= 3 && day(r) && top(r), r => nb(r) && r.vs_d <= -3 && day(r) && bottom(r)],
+      swing: [r => nb(r) && r.vs_w > 0 && r.rs_1m > 0 && r._up && between(r._rsi, 50, 70) && near20(r),
+              r => nb(r) && r.vs_w < 0 && r.rs_1m < 0 && r._down && between(r._rsi, 30, 50) && near20(r)],
+      hold:  [r => nb(r) && r.rs_1m > 0 && r.rs_3m > 0 && r.rs_6m > 0 && r._up && r.off_high_pct >= -30,
+              r => nb(r) && r.rs_1m < 0 && r.rs_3m < 0 && r.rs_6m < 0 && r._down],
+    } : {
+      day:   [r => r.rs_d >= 90 && day(r) && top(r), r => r.rs_d <= 10 && day(r) && bottom(r)],
+      swing: [r => r.rs_w >= 70 && r.rs_m >= 70 && r.rs_rating >= 60 && r._up && between(r._rsi, 50, 70) && near20(r),
+              r => r.rs_w <= 30 && r.rs_m <= 30 && r.rs_rating <= 40 && r._down && between(r._rsi, 30, 50) && near20(r)],
+      hold:  [r => r.rs_rating >= 85 && r.rs_m >= 50 && r._up && r.off_high_pct >= -15,
+              r => r.rs_rating <= 15 && r.rs_m <= 50 && r._down && r.off_high_pct <= -30],
+    };
+    const score = crypto
+      ? {day: r => r.vs_d + 2 * rv4(r), swing: r => (r.vs_w + r.rs_1m) / 2, hold: r => r.rs_btc}
+      : {day: r => r.rs_d + 5 * rv4(r), swing: r => (r.rs_w + r.rs_m + r.rs_rating) / 3, hold: r => 0.7 * r.rs_rating + 0.3 * r.rs_m};
+    const sane = (r) => r.atr_pct <= (crypto ? 25 : 15);
+    const idea = (r) => {
+      const o = {ticker: r.ticker, description: r.description, tier: r.tier};
+      for (const k of ['close', 'change', 'rs_d', 'rs_w', 'rs_m', 'rs_rating', 'rs_1m', 'rs_3m', 'vs_d', 'vs_w', 'rel_vol', 'atr_pct',
+        'off_high_pct', 'ext20', 'mcap', ...(crypto ? ['rs_6m', 'rs_btc'] : [])]) o[k] = out(num(r[k]));
+      o.perf_w = out(num(r['Perf.W'])); o.perf_1m = out(num(r['Perf.1M'])); o.rsi = out(num(r.RSI));
+      return o;
+    };
+    const playbook = crypto ? C.playbook_crypto : C.playbook, ideas = {};
+    for (const h of ['day', 'swing', 'hold']) {
+      ideas[h] = {...playbook[h], long_rows: [], short_rows: [], counts: {}};
+      ['long', 'short'].forEach((side, s) => {
+        const hit = sortBy(df.filter(r => rules[h][s](r) && sane(r)).map(r => ({...r, _s: score[h](r)})), '_s', side === 'short');
+        ideas[h][side + '_rows'] = hit.slice(0, C.ideas_n).map(idea);
+        ideas[h].counts[side] = hit.length;
+      });
+    }
+    const board = [];
+    for (const t of (tier && tier !== 'All' ? [tier] : C.tiers[market])) {
+      let sub = df.filter(r => r.tier === t);
+      if (!sub.length) continue;
+      const cell = {};
+      if (crypto) sub = sub.filter(nb);
+      for (const [h, c] of crypto ? [['day', 'vs_d'], ['week', 'vs_w'], ['month', 'rs_1m']] : [['day', 'change'], ['week', 'Perf.W'], ['month', 'Perf.1M']]) {
+        const srt = sortBy(sub.map(r => ({...r, _v: num(r[c])})).filter(r => !Number.isNaN(r._v)), '_v', false);
+        const k = srt.length < 2 * C.board_n ? Math.min(C.board_n, Math.floor(srt.length / 2)) : C.board_n;
+        const pick = (f) => f.map(r => ({ticker: r.ticker, pct: out(r._v), rs_rating: out(num(r.rs_rating))}));
+        cell[h] = {leaders: pick(srt.slice(0, k)), laggards: pick(k ? srt.slice(-k).reverse() : [])};
+      }
+      board.push({tier: t, n: sub.length, ...cell});
+    }
+    return {kind: 'leaderboard', scan: 'leaderboard', title: C.scans.find(s => s.key === 'leaderboard').title, market, timeframe: '1D',
+      exchange: crypto ? (universe || {}).exchange || null : null, universe_filter: data.uni, universe_size: df.length, matched: df.length,
+      rows: [], cap_tier: tier || 'All', tiers: C.tiers[market], benchmark: C.benchmark[market][1], benchmark_ticker: benchTicker,
+      board, ideas, note: '', board_vs_benchmark: crypto, update_mode: modeOf(df),
+      elapsed_s: (Date.now() - t0) / 1000, scanned_at: new Date(data.fetched || Date.now()).toISOString()};
+  }
+
+  async function snapshot() {
+    const rows = await byTickers(Object.keys(C.snapshot), ['name', 'description', 'close', 'change', 'update_mode']);
+    const by = Object.fromEntries(rows.map(r => [r.ticker, r]));
+    return Object.entries(C.snapshot).filter(([t]) => by[t]).map(([t, name]) =>
+      ({ticker: t, name, close: out(num(by[t].close)), change: out(num(by[t].change)), update_mode: by[t].update_mode}));
+  }
+
+  return {init, fetchData, compute, snapshot};
+})();
+if (typeof module !== 'undefined') module.exports = TVScan;
+
+TVScan.init(DATA.cfg);
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const DASH = '<span class="na">&mdash;</span>';
@@ -355,6 +773,9 @@ const PREF = 'tvScanPage';
 let st = {market: 'us', tf: '1D', scan: 'top_gainers', tier: 'All'};
 let sort = {k: null, asc: false};
 const cache = {};
+// Live universes fetched by Run scan, per market + timeframe + universe filters. While one is fresh,
+// every scan, setting and cap tier is recomputed from it in the browser without another request.
+const live = {}, LIVE_TTL = 5 * 60000, REFETCH = 60000;
 try { Object.assign(st, JSON.parse(localStorage.getItem(PREF) || '{}')); } catch (e) {}
 (() => { const [m, tf, s] = location.hash.slice(1).split('/');
   if (DATA.markets.some(x => x[0] === m)) st.market = m;
@@ -367,13 +788,69 @@ function save() {
   history.replaceState(null, '', `#${st.market}/${st.tf}/${st.scan}`);
 }
 function set(patch) {
+  const before = `${st.market}/${st.scan}`;
   Object.assign(st, patch);
   if ('market' in patch || 'scan' in patch || 'tf' in patch) { sort = {k: null, asc: false}; if (!('tier' in patch)) st.tier = 'All'; }
   if (st.scan === 'leaderboard') st.tf = '1D';
-  save(); controls(); load();
+  save(); controls(before !== `${st.market}/${st.scan}`); show();
 }
 
-function controls() {
+// ── settings ────────────────────────────────────────────────────────────────
+const fld = (lbl, html) => `<label class="fld"><span>${esc(lbl)}</span>${html}</label>`;
+const numIn = (attr, v) => `<input type="number" step="any" inputmode="decimal" ${attr} value="${v}">`;
+function settings() {
+  const s = DATA.scans.find(x => x.key === st.scan), m = st.market, u = DATA.universe[m];
+  const pick = (k, v, opts) => `<select data-p="${k}">${opts.map(([val, l]) => `<option value="${val}"${val === v ? ' selected' : ''}>${l}</option>`).join('')}</select>`;
+  $('params').innerHTML = Object.entries(s.params).map(([k, v]) =>
+    k === 'rank_within' ? fld('rank RS within', pick(k, v, [['tier', 'each cap tier'], ['all', 'whole universe']]))
+    : k === 'pattern_type' ? fld('pattern type', pick(k, v, [['bullish', 'bullish'], ['bearish', 'bearish']]))
+    : fld(k.replace(/_/g, ' '), numIn(`data-p="${k}"`, v))).join('')
+    + (st.scan === 'leaderboard' ? '' : fld('rows', numIn('id="s-limit" min="1" max="500"', DATA.rows)));
+  $('uni').innerHTML = m === 'crypto'
+    ? fld('exchange', `<select id="u-exchange">${DATA.cfg.crypto_exchanges.map(x => `<option>${x}</option>`).join('')}</select>`)
+      + fld('type', `<select id="u-kind"><option value="spot">Spot</option><option value="perp">Perps</option></select>`)
+      + fld('min 24h vol ($M)', numIn('id="u-vol" min="0"', u.min_24h_vol / 1e6))
+    : fld('min price', numIn('id="u-price" min="0"', u.min_price))
+      + fld('min avg vol (K)', numIn('id="u-avgvol" min="0"', u.min_avg_vol / 1e3))
+      + fld(m === 'india' ? 'min mcap (₹ Cr)' : 'min mcap ($M)', numIn('id="u-mcap" min="0"', u.min_mcap / (m === 'india' ? 1e7 : 1e6)));
+}
+function readSettings() {
+  const params = {};
+  document.querySelectorAll('#params [data-p]').forEach(el => { params[el.dataset.p] = el.tagName === 'SELECT' ? el.value : parseFloat(el.value); });
+  const v = (id, mult) => { const el = $(id); return el && el.value !== '' ? parseFloat(el.value) * mult : null; };
+  const m = st.market, lim = $('s-limit');
+  const fetchOpts = m === 'crypto' ? {exchange: $('u-exchange').value, kind: $('u-kind').value, min_24h_vol: v('u-vol', 1e6)}
+    : {min_price: v('u-price', 1), min_avg_vol: v('u-avgvol', 1e3), min_mcap: v('u-mcap', m === 'india' ? 1e7 : 1e6)};
+  return {params, fetchOpts, limit: Math.max(1, Math.min(parseInt(lim ? lim.value : DATA.rows) || DATA.rows, 500)),
+          key: `${m}|${st.tf}|${JSON.stringify(fetchOpts)}`};
+}
+const fresh = (L, ttl) => L && Date.now() - L.at < ttl;
+
+async function runLive() {
+  const btn = $('run'), msg = $('run-msg'), s = readSettings();
+  btn.disabled = true; btn.textContent = 'Scanning…'; msg.className = 'msg'; msg.textContent = '';
+  try {
+    if (!fresh(live[s.key], REFETCH)) live[s.key] = {data: await TVScan.fetchData(st.market, st.tf, s.fetchOpts), at: Date.now()};
+    st.live = true;
+    show();
+    TVScan.snapshot().then(tape).catch(() => {});
+  } catch (e) {
+    msg.className = 'msg err';
+    msg.textContent = `Live scan failed (${e.message || e}). Showing the stored copy.`;
+  } finally { btn.disabled = false; btn.innerHTML = '&#9654; Run scan'; }
+}
+
+// live data if Run scan has fetched this market recently, otherwise the stored copy
+function show() {
+  const s = readSettings(), L = live[s.key];
+  if (!st.live || !fresh(L, LIVE_TTL)) return load();
+  try { render(TVScan.compute(st.scan, L.data, s.limit, s.params, {cap_tier: st.tier, exchange: s.fetchOpts.exchange}), L.at); }
+  catch (e) { fail('Could not compute this scan: ' + e.message); }
+}
+document.addEventListener('change', (e) => { if (e.target.closest('#params')) show(); });
+
+function controls(rebuildSettings = true) {
+  if (rebuildSettings) settings();
   $('markets').innerHTML = DATA.markets.map(([k, l]) =>
     `<button class="tab${k === st.market ? ' on' : ''}" role="tab" onclick="set({market:'${k}'})">${esc(l)}</button>`).join('');
   const daily = st.scan === 'leaderboard';
@@ -385,9 +862,7 @@ function controls() {
     return head + `<button class="chip${s.key === st.scan ? ' on' : ''}" onclick="set({scan:'${s.key}'})">${esc(s.title)}</button>`;
   }).join('');
   const s = DATA.scans.find(x => x.key === st.scan);
-  const settings = Object.entries(s.params).map(([k, v]) => `${k.replace(/_/g, ' ')} ${v}`).join(' · ');
-  $('about').innerHTML = `<b>${esc(s.title)}</b> &mdash; ${esc(s.description)}`
-    + (settings ? `<div class="set">Settings: ${esc(settings)}</div>` : '');
+  $('about').innerHTML = `<b>${esc(s.title)}</b> &mdash; ${esc(s.description)}`;
 }
 
 async function load() {
@@ -405,7 +880,7 @@ async function load() {
   }
   if (key !== `${st.market}_${st.tf}`) return;      // the user moved on while it loaded
   const d = cache[key][st.scan];
-  d ? render(d) : fail('This scan was not available at the last publish.');
+  d ? render(d, 0) : fail('This scan was not available at the last publish.');
 }
 
 function fail(msg) {
@@ -428,23 +903,28 @@ const EXTRA = {
 const SIG = {breakout: 'var(--bull)', breakdown: 'var(--bear)', accumulate: 'hsl(212 92% 67%)', squeeze: 'var(--neutral)'};
 const rsCell = (v) => v == null ? DASH : `<b class="${v >= 80 ? 'up' : v <= 20 ? 'dn' : ''}">${v}</b>`;
 
-function render(d) {
+// liveAt: when Run scan fetched this data, or 0 for the stored copy
+function render(d, liveAt) {
   const isBoard = d.kind === 'leaderboard';
   const mkt = (DATA.markets.find(m => m[0] === d.market) || [, d.market])[1];
   const when = DATA.files[`${st.market}_${st.tf}`];
-  $('meta').innerHTML = `<b>${esc(d.title)}</b> · ${esc(mkt)}${d.exchange ? ' ' + esc(d.exchange) : ''} · ${esc(d.timeframe)}`
+  $('meta').innerHTML = (liveAt ? `<span class="pill live">LIVE</span>` : `<span class="pill stored">STORED</span>`)
+    + `<b>${esc(d.title)}</b> · ${esc(mkt)}${d.exchange ? ' ' + esc(d.exchange) : ''} · ${esc(d.timeframe)}`
     + (isBoard ? ` · <b>${d.universe_size}</b> names` : ` · <b>${d.matched}</b> matches of ${d.universe_size}`)
-    + ` · scanned ${when ? ago(when) : 'earlier (last good copy)'}`
+    + (liveAt ? ` · fetched ${new Date(liveAt).toLocaleTimeString()}` : ` · scanned ${when ? ago(when) : 'earlier (last good copy)'} · default settings`)
     + (d.update_mode ? ` · <span class="${d.update_mode === 'streaming' ? 'up' : ''}">${mode(d.update_mode)}</span>` : '')
     + (d.benchmark_ticker ? ` · RS vs <b>${esc(d.benchmark_ticker)}</b>` : '');
   $('note').hidden = !d.note; $('note').textContent = d.note || '';
   $('board').hidden = !isBoard; $('tbl-wrap').hidden = isBoard;
-  if (isBoard) { $('tiers').innerHTML = ''; return renderBoard(d); }
+  // Live: a tier chip reruns the scan inside that tier. Stored: it can only narrow the saved rows.
+  const count = (t) => liveAt ? (st.tier === 'All' || st.tier === t ? (d.tier_counts || {})[t] : null) : d.rows.filter(r => r.tier === t).length;
+  const chips = (liveAt || !isBoard) ? `<span class="lbl">Market cap</span>` + ['All', ...(d.tiers || [])].map(t => {
+    const n = t === 'All' || isBoard ? null : count(t);
+    return `<button class="chip${t === st.tier ? ' on' : ''}" onclick="set({tier:'${t}'})">${t}${n == null ? '' : `<span class="n">${n}</span>`}</button>`; }).join('') : '';
+  $('tiers').innerHTML = chips;
+  if (isBoard) return renderBoard(d);
 
   const cur = d.market === 'india' ? '₹' : '$';
-  const shown = (t) => d.rows.filter(r => r.tier === t).length;
-  $('tiers').innerHTML = `<span class="lbl">Market cap</span>` + ['All', ...(d.tiers || [])].map(t =>
-    `<button class="chip${t === st.tier ? ' on' : ''}" onclick="set({tier:'${t}'})">${t}${t === 'All' ? '' : `<span class="n">${shown(t)}</span>`}</button>`).join('');
 
   const cols = [
     ['ticker', 'Symbol', r => link(r.ticker), 1],
@@ -475,7 +955,7 @@ function render(d) {
 
   $('head').innerHTML = cols.map(([k, lbl, , left]) =>
     `<th class="${left ? 'l' : ''}${sort.k === k ? ' sorted' : ''}" onclick="sortBy('${k}')">${lbl}${sort.k === k ? (sort.asc ? ' ▲' : ' ▼') : ''}</th>`).join('');
-  let rows = d.rows.filter(r => st.tier === 'All' || r.tier === st.tier);
+  let rows = d.rows.filter(r => liveAt || st.tier === 'All' || r.tier === st.tier);
   if (sort.k) {
     const k = sort.k, s = sort.asc ? 1 : -1;
     rows.sort((a, b) => { const x = a[k], y = b[k];
@@ -495,7 +975,7 @@ function render(d) {
     : `<tr><td class="empty" colspan="${cols.length}">${none}</td></tr>`;
 }
 
-function sortBy(k) { sort = {k, asc: sort.k === k ? !sort.asc : false}; load(); }
+function sortBy(k) { sort = {k, asc: sort.k === k ? !sort.asc : false}; show(); }
 
 function renderBoard(d) {
   const vsB = d.board_vs_benchmark;
@@ -537,16 +1017,19 @@ function renderBoard(d) {
   $('board').innerHTML = html + '</div>';
 }
 
-$('tape').innerHTML = DATA.snapshot.map(r =>
-  `<a href="${chart(r.ticker)}" target="_blank" rel="noopener" title="${esc(mode(r.update_mode))}"><span class="n">${esc(r.name)}</span>${price(r.close)} ${pct(r.change)}</a>`).join('')
-  || '<span class="na">market snapshot unavailable</span>';
+function tape(rows) {
+  $('tape').innerHTML = rows.map(r =>
+    `<a href="${chart(r.ticker)}" target="_blank" rel="noopener" title="${esc(mode(r.update_mode))}"><span class="n">${esc(r.name)}</span>${price(r.close)} ${pct(r.change)}</a>`).join('')
+    || '<span class="na">market snapshot unavailable</span>';
+}
+tape(DATA.snapshot);
 $('hdr-updated').innerHTML = `updated <b>${new Date(DATA.built).toLocaleString(undefined, {dateStyle: 'medium', timeStyle: 'short'})}</b>`;
 $('u-us-p').textContent = DATA.universe.us.min_price;
 $('u-us-m').textContent = DATA.universe.us.min_mcap / 1e6;
 $('u-in-m').textContent = (DATA.universe.india.min_mcap / 1e7).toLocaleString();
 $('u-cr-v').textContent = DATA.universe.crypto.min_24h_vol / 1e6;
 document.addEventListener('click', (e) => { const b = $('brand'); if (b.open && !b.contains(e.target)) b.open = false; });
-save(); controls(); load();
+save(); controls(); show();
 </script>
 
 </body>
