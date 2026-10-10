@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script>
+// Always show the latest publish: browsers may hold this file for 10 minutes.
+(function () {
+  var V = "4d451d331f", P = "tvscan.html";
+  fetch("version.json?t=" + Date.now(), { cache: "no-store" })
+    .then(function (r) { return r.json(); })
+    .then(function (v) {
+      var cur = v[P];
+      if (!cur || cur === V) return;
+      if (new URLSearchParams(location.search).get("v") === cur) return;  // no reload loop
+      location.replace(location.pathname + "?v=" + cur + location.hash);
+    })
+    .catch(function () {});
+})();
+</script>
+<title>sujitvarpe/breadth — TV scan</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#14171f">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+
+/* Dark-only, dense trading-terminal look. */
+:root {
+  color-scheme: dark;
+  --page:      hsl(220 20% 8%);
+  --card:      hsl(220 18% 11%);
+  --card-2:    hsl(220 18% 13%);
+  --ink:       hsl(210 20% 95%);
+  --ink-2:     hsl(210 15% 75%);
+  --muted:     hsl(210 15% 55%);
+  --grid:      hsl(220 15% 16%);
+  --border:    hsl(220 15% 18%);
+  --bull:      hsl(142 76% 46%);
+  --bear:      hsl(340 82% 58%);
+  --neutral:   hsl(38 92% 55%);
+  --accent:    hsl(38 92% 55%);
+  --accent-ink: hsl(30 25% 8%);
+  --bull-wash: hsla(142,76%,46%,.12);
+  --bear-wash: hsla(340,82%,58%,.12);
+  --neut-wash: hsla(38,92%,55%,.12);
+  --row-alt:   rgba(255,255,255,.035);
+  --elevate:   rgba(255,255,255,.06);
+  --tooltip-bg: hsl(220 18% 18%);
+  --tooltip-ink: hsl(210 20% 95%);
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--page);
+  color: var(--ink);
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  margin: 0;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1440px; margin: 0 auto; padding: 16px 16px 40px; display: flex; flex-direction: column; gap: 16px; }
+.mono { font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace; font-variant-numeric: tabular-nums; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* ── App frame: toolbar, tabs, gainers strip, table ── */
+.app { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.toolbar { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+
+.brand { position: relative; }
+.brand > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--card-2);
+  font-weight: 600; font-size: 13.5px; min-width: 230px; }
+.brand > summary::-webkit-details-marker { display: none; }
+.brand > summary:hover { background: var(--elevate); }
+.brand .logo { width: 22px; height: 22px; border-radius: 6px; background: var(--accent); color: var(--accent-ink);
+  display: grid; place-items: center; flex: none; }
+.brand .chev { margin-left: auto; color: var(--muted); transition: transform .15s; }
+.brand[open] .chev { transform: rotate(180deg); }
+.brand-menu { position: absolute; top: calc(100% + 4px); left: 0; z-index: 20; min-width: 100%;
+  background: hsl(220 18% 14%); border: 1px solid var(--border); border-radius: 8px; padding: 4px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+.brand-menu a { display: block; padding: 7px 10px; border-radius: 6px; color: var(--ink-2); text-decoration: none; font-size: 13px; }
+.brand-menu a:hover, .brand-menu a:focus-visible { background: var(--elevate); color: var(--ink); outline: none; }
+.brand-menu a.on { color: var(--accent); font-weight: 600; }
+
+.tb-right { margin-left: auto; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.search { display: flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--card-2); color: var(--muted); }
+.search input { background: transparent; border: 0; outline: 0; color: var(--ink); font: inherit; font-size: 13px; width: 150px; }
+.search:focus-within { border-color: var(--accent); }
+.icon-btn { font: inherit; font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;
+  height: 30px; min-width: 30px; justify-content: center; padding: 0 8px; border-radius: 7px; cursor: pointer;
+  border: 1px solid transparent; background: transparent; color: var(--muted); }
+.icon-btn:hover { background: var(--elevate); color: var(--ink); }
+.icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.icon-btn.on { background: var(--accent); color: var(--accent-ink); }
+.icon-btn:disabled { opacity: .6; cursor: progress; }
+.icon-btn svg { width: 15px; height: 15px; }
+.vsep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+.status { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+.status b { color: var(--ink-2); font-weight: 500; }
+
+.tabs { display: flex; gap: 4px; padding: 0 12px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+.tab { font: inherit; font-size: 13px; font-weight: 500; padding: 9px 10px; cursor: pointer; background: none;
+  border: 0; border-bottom: 2px solid transparent; color: var(--muted); white-space: nowrap; }
+.tab:hover { color: var(--ink); }
+.tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.tab.on { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.tabs .colmode { margin-left: auto; display: flex; align-items: center; gap: 2px; }
+.tabs .colmode .tab { font-size: 12px; }
+
+/* Scrolling strip: benchmarks, breadth, then the day's top gainers. */
+.strip { display: flex; overflow: hidden; border-bottom: 1px solid var(--border); background: hsl(220 18% 10%);
+  font-size: 11.5px; white-space: nowrap; }
+.strip-track { display: flex; gap: 22px; padding: 7px 12px; animation: tape 60s linear infinite; }
+.strip:hover .strip-track { animation-play-state: paused; }
+@keyframes tape { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .strip-track { animation: none; } .strip { overflow-x: auto; } }
+.strip .it { display: inline-flex; gap: 6px; align-items: baseline; }
+.strip .sym { font-weight: 700; color: var(--ink); }
+.strip .px { color: var(--muted); }
+.strip .lbl { font-size: 10px; font-weight: 700; letter-spacing: .14em; color: var(--accent); text-transform: uppercase; }
+.strip .lbl.lose { color: var(--bear); }
+
+.tbl-wrap { overflow: auto; max-height: min(78vh, 1100px); }
+table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 13px; }
+th { text-align: right; color: var(--muted); font-size: 11.5px; font-weight: 500;
+  padding: 10px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; background: var(--card); }
+th:first-child { text-align: left; }
+td { padding: 9px 12px; line-height: 20px; vertical-align: middle; border-bottom: 1px solid var(--grid); text-align: right; white-space: nowrap; }
+td:first-child { text-align: left; }
+tr:last-child td { border-bottom: none; }
+/* Column rules like a terminal grid. */
+.tbl-groups th + th, .tbl-groups td + td { border-left: 1px solid var(--grid); }
+.tbl-groups thead th { position: sticky; top: 0; z-index: 2; }
+.tbl-groups th:first-child, .tbl-groups td:first-child {
+  position: sticky; left: 0; background: var(--card); z-index: 1; min-width: 210px; }
+.tbl-groups thead th:first-child { z-index: 3; }
+.tbl-groups td.perf { min-width: 92px; font-weight: 600; font-size: 12.5px; }
+/* Secondary columns, hidden until "All columns" is chosen. */
+.tbl-groups[data-cols="core"] .x { display: none; }
+th.sortable { cursor: pointer; user-select: none; }
+th.sortable:hover { color: var(--ink); }
+th.sorted { color: var(--ink); font-weight: 700; }
+tr.grp { cursor: pointer; }
+tr.grp td { font-weight: 500; }
+tr.grp:hover td { background: hsl(220 18% 14%); }
+tr.mem td { background: hsl(220 18% 9.5%); font-size: 12.5px; color: var(--ink-2); }
+.gname { display: inline-flex; vertical-align: middle; align-items: center; gap: 10px; max-width: 360px; overflow: hidden; }
+.gicon { width: 18px; height: 18px; line-height: 1; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--border); color: var(--ink-2);
+  display: inline-grid; place-items: center; font-size: 11px; flex: none; }
+.gicon:empty { visibility: hidden; }
+.gtext { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gcount { flex: none; font-size: 11px; font-weight: 500; color: var(--muted); margin-left: -4px; }
+tr.grp.open .gcount { color: var(--accent); }
+tr.grp.open .gicon { border-color: var(--accent); color: var(--accent); }
+/* The stocks inside a theme are the point of the page, so the way in is a
+   labelled button, and the top three leaders show without opening anything. */
+.gwrap { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.glead { font-size: 11px; color: var(--muted); font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 360px; }
+.glead b { color: var(--bull); font-weight: 600; }
+a.tvl { color: inherit; text-decoration: none; border-bottom: 1px dotted transparent; }
+a.tvl:hover { color: var(--accent); border-bottom-color: var(--accent); }
+a.tvl:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sbtn { flex: none; font-size: 11px; font-weight: 600; border-radius: 5px; padding: 2px 8px; border: 1px solid var(--border);
+  color: var(--ink-2); background: transparent; white-space: nowrap; }
+tr.grp:hover .sbtn { border-color: var(--accent); color: var(--accent); }
+tr.grp.open .sbtn { background: var(--accent); border-color: var(--accent); color: hsl(220 20% 10%); }
+tr.memhead td { background: hsl(220 18% 9.5%); font-size: 11px; color: var(--accent); padding-top: 8px; padding-bottom: 4px; letter-spacing: .04em; }
+.mh-title { margin-right: 14px; }
+.mh-sort { color: var(--muted); letter-spacing: 0; }
+.msort { font: inherit; font-size: 11px; margin-left: 4px; padding: 1px 7px; border-radius: 4px; border: 1px solid var(--border);
+  background: transparent; color: var(--ink-2); cursor: pointer; letter-spacing: 0; }
+.msort:hover { border-color: var(--accent); color: var(--accent); }
+.msort.on { background: var(--accent); border-color: var(--accent); color: hsl(220 20% 10%); font-weight: 600; }
+.rank { display: inline-block; width: 26px; color: var(--muted); font-size: 11px; }
+.pill { display: inline-block; font-size: 11px; font-weight: 600; border-radius: 5px; padding: 1px 8px; }
+.lead { font-size: 11.5px; line-height: 1.5; }
+  .lead .up   { color: var(--bull); font-weight: 600; }
+  .lead .down { color: var(--bear); }
+.etf { font-weight: 600; color: var(--accent); }
+.basket { color: var(--muted); font-style: italic; }
+#rs-svg rect.hit.drill { cursor: pointer; }
+.hit-sym { background: var(--neut-wash); color: var(--accent); border-radius: 3px; padding: 0 3px; }
+.empty { color: var(--muted); text-align: center !important; padding: 28px !important; }
+
+/* Chart view (grid icon) */
+.chart-view { padding: 16px 18px 18px; }
+.chart-view[hidden], .tbl-wrap[hidden] { display: none; }
+.sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.sec-title { font-size: 14px; font-weight: 600; }
+.sec-note { font-size: 12px; color: var(--muted); max-width: 80ch; }
+.chart-box { position: relative; }
+.chart-box svg { display: block; width: 100%; height: auto; }
+.tooltip { position: absolute; pointer-events: none; background: var(--tooltip-bg); color: var(--tooltip-ink);
+  border: 1px solid var(--border); font-size: 12px; border-radius: 6px; padding: 6px 10px; line-height: 1.45; white-space: nowrap;
+  opacity: 0; transition: opacity .12s; z-index: 5; box-shadow: 0 6px 18px rgba(0,0,0,.45); }
+.tooltip.show { opacity: 1; }
+
+.legend { font-size: 11.5px; color: var(--muted); padding: 9px 12px; border-top: 1px solid var(--border); }
+.legend b { color: var(--ink-2); font-weight: 600; }
+
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.card .sec-head { padding: 14px 16px 0; }
+.card table th { background: var(--card); }
+.setups { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 620px), 1fr)); gap: 16px; }
+
+footer { color: var(--muted); font-size: 11.5px; text-align: center; line-height: 1.7; }
+footer a { color: var(--accent); text-decoration: none; }
+
+@media (max-width: 640px) {
+  .brand > summary { min-width: 0; }
+  .search input { width: 100px; }
+  .status { display: none; }
+  .tbl-groups th:first-child, .tbl-groups td:first-child { min-width: 150px; }
+  .gname { max-width: 170px; }
+}
+
+/* TV scan page additions */
+.tape { display: flex; gap: 18px; overflow-x: auto; white-space: nowrap; font-size: 12px; padding: 9px 14px;
+  border-bottom: 1px solid var(--border); scrollbar-width: none; }
+.tape::-webkit-scrollbar { display: none; }
+.tape a { text-decoration: none; color: var(--ink); }
+.tape .n { color: var(--muted); margin-right: 4px; }
+.up { color: var(--bull); } .dn { color: var(--bear); } .na { color: var(--muted); }
+.ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 14px 0; }
+.ctl .lbl { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.chip { font: inherit; font-size: 12px; padding: 4px 11px; border-radius: 999px; border: 1px solid var(--border);
+  background: transparent; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+.chip:hover { color: var(--ink); }
+.chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.chip .n { opacity: .7; margin-left: 4px; font-size: 11px; }
+.chip[disabled] { opacity: .35; cursor: default; }
+.grp { font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 0 2px 0 8px; }
+.grp:first-of-type { margin-left: 0; }
+.about { padding: 10px 14px 4px; font-size: 12.5px; color: var(--ink-2); line-height: 1.55; }
+.about b { color: var(--ink); }
+.about .set { color: var(--muted); font-size: 11.5px; }
+.meta { padding: 4px 14px 10px; font-size: 12px; color: var(--muted); }
+.meta b { color: var(--ink); font-weight: 600; }
+.note { padding: 0 14px 8px; font-size: 11.5px; color: var(--neutral); }
+.tv-table th, .tv-table td { padding: 7px 10px; }
+.tv-table thead th { position: sticky; top: 0; z-index: 2; background: var(--card); cursor: pointer; user-select: none; }
+.tv-table td:first-child, .tv-table th:first-child { position: sticky; left: 0; z-index: 1; background: var(--card); }
+.tv-table thead th:first-child { z-index: 3; }
+.tv-table td.l, .tv-table th.l { text-align: left; }
+.tv-table .nm { color: var(--muted); font-size: 12px; max-width: 190px; overflow: hidden; text-overflow: ellipsis; }
+a.sym { color: var(--accent); font-weight: 700; text-decoration: none; }
+a.sym:hover { text-decoration: underline; }
+.tier { font-size: 10px; font-weight: 700; border-radius: 4px; padding: 1px 6px; border: 1px solid var(--border); color: var(--muted); }
+.tier-Mega, .tier-Large { color: hsl(212 92% 67%); border-color: hsl(212 60% 40%); }
+.tier-Mid { color: var(--bull); border-color: hsla(142,76%,46%,.5); }
+.tier-Small { color: var(--neutral); border-color: hsla(38,92%,55%,.5); }
+.tier-Micro { color: var(--bear); border-color: hsla(340,82%,58%,.5); }
+.sig { border-radius: 20px; padding: 1px 8px; font-size: 10px; font-weight: 700; border: 1px solid currentColor; }
+.tierhead td { padding: 12px 10px 5px !important; text-align: left !important; background: var(--card); }
+.empty { color: var(--muted); text-align: center !important; padding: 28px !important; }
+.board { padding: 0 14px 14px; }
+.lb-h { color: var(--ink); font-weight: 700; font-size: 13.5px; margin: 14px 0 4px; }
+.lb-sub { color: var(--muted); font-size: 11.5px; margin-bottom: 8px; line-height: 1.5; }
+.lb-grid { font-size: 12px; }
+.lb-grid th { text-align: left; padding: 6px 8px; }
+.lb-grid td { vertical-align: top; padding: 8px; text-align: left; white-space: normal; }
+.lb-list { display: grid; grid-template-columns: auto auto; gap: 1px 10px; }
+.lb-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; min-width: 210px; }
+.lb-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+.lb-card { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; min-width: 0; overflow-x: auto; }
+.lb-card h4 { margin: 0; color: var(--ink); font-size: 13px; }
+.lb-card .hz { color: var(--muted); font-size: 11px; font-weight: 400; margin-left: 6px; }
+.lb-rule { color: var(--muted); font-size: 11px; margin: 4px 0 6px; line-height: 1.45; }
+.lb-side { font-size: 11.5px; font-weight: 700; margin: 10px 0 3px; }
+.lb-t { font-size: 11.5px; }
+.lb-t td { padding: 3px 4px; border-bottom: 1px solid var(--grid); line-height: 17px; }
+.lb-t .hd td { color: var(--muted); font-size: 10px; border-bottom: 0; }
+.caveat { font-size: 12px; color: var(--muted); padding: 10px 14px; border-top: 1px solid var(--border); line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="app">
+  <div class="toolbar">
+    <details class="brand" id="brand">
+      <summary>
+        <span class="logo" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span>
+        TV Scan
+        <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+      </summary>
+      <nav class="brand-menu" aria-label="Pages">
+        <a href="./">Market Breadth</a>
+        <a href="./themes.html">US Sectors &amp; Themes</a>
+        <a href="./leaders.html">Leaders &amp; Laggards</a>
+        <a href="./tvscan.html" class="on" aria-current="page">TV Scan</a>
+        <a href="./themes-in.html">India Sectors &amp; Themes</a>
+      </nav>
+    </details>
+    <div class="tb-right">
+      <span class="status" id="hdr-updated"></span>
+    </div>
+  </div>
+
+  <div class="tape mono" id="tape"></div>
+  <div class="tabs" role="tablist" id="markets"></div>
+  <div class="ctl"><span class="lbl">Timeframe</span><span id="tfs" style="display:contents"></span></div>
+  <div class="ctl" id="scans"></div>
+  <div class="about" id="about"></div>
+  <div class="ctl" id="tiers" style="padding-top:2px"></div>
+  <div class="meta" id="meta"></div>
+  <div class="note" id="note" hidden></div>
+
+  <div class="board" id="board" hidden></div>
+  <div class="tbl-wrap" id="tbl-wrap">
+    <table class="tv-table">
+      <thead><tr id="head"></tr></thead>
+      <tbody id="body"></tbody>
+    </table>
+  </div>
+  <div class="caveat">
+    A stored copy of each scan at its default settings, rebuilt with every publish &mdash; it cannot run a scan live or take
+    custom settings. Scans are screens, not tested signals. Tap a heading to sort, a ticker for its chart.
+  </div>
+</div>
+
+<footer>
+  Data from a TradingView screener scan; US quotes are 15 minutes delayed. Universe &mdash; US: price &ge; $<span id="u-us-p"></span>,
+  market cap &ge; $<span id="u-us-m"></span>M; India: NSE, market cap &ge; &#8377;<span id="u-in-m"></span> Cr; Crypto: Binance spot,
+  24h volume &ge; $<span id="u-cr-v"></span>M. <b>RS Rtg</b> ranks 2&times;3M + 6M + 12M return against that universe (99 = stronger than 99%).
+</footer>
+</div>
+
+<script>
+const DATA = {"built":"2026-10-10T19:03:48+00:00","scans":[{"key":"top_gainers","title":"Top gainers","group":"screen","description":"Biggest % movers vs previous close.","params":{}},{"key":"top_losers","title":"Top losers","group":"screen","description":"Worst performers \u2014 shorts or dip hunts.","params":{}},{"key":"smart_volume_scanner","title":"Smart volume","group":"screen","description":"Relative volume + price move + RSI band. Tags breakout vs accumulate.","params":{"min_volume_ratio":2.0,"min_price_change":2.0,"rsi_min":0,"rsi_max":100}},{"key":"volume_breakout_scanner","title":"Volume breakout","group":"screen","description":"Volume spike AND close above the upper Bollinger Band.","params":{"volume_multiplier":2.0,"price_change_min":3.0}},{"key":"rating_filter","title":"BB rating","group":"momentum","description":"Bollinger Band position rating \u22123\u2026+3 (+3 = above upper band).","params":{"rating":2}},{"key":"consecutive_candles_scan","title":"Consecutive candles","group":"momentum","description":"Streak of rising (or falling) candles, each closing beyond the last.","params":{"pattern_type":"bullish","candle_count":3,"min_growth":2.0}},{"key":"candle_patterns","title":"Candle patterns","group":"momentum","description":"TradingView-detected candlestick patterns on the current bar.","params":{"pattern_type":"bullish"}},{"key":"tv_rating","title":"TV technical rating","group":"momentum","description":"TradingView's Recommend.All (MA + oscillator vote), strongest first.","params":{"min_rating":0.5}},{"key":"bollinger_scan","title":"Bollinger squeeze","group":"volatility","description":"Tightest Bollinger Band Width \u2014 coiled, pre-breakout.","params":{"bbw_threshold":0.08}},{"key":"new_highs","title":"Near 52w high","group":"trend","description":"Within X% of the 52-week high with the trend stack intact (close > EMA50 > EMA200).","params":{"within_pct":3.0}},{"key":"rs_leaders","title":"RS leaders","group":"strength","description":"RS Rating \u2265 X (stronger than X% of this universe), trend stack up (close > EMA50 > EMA200), near the 52-week high; crypto: beating BTCUSDT over both 1M and 3M. RS ranked within each market-cap tier by default, grouped by tier.","params":{"min_rating":80,"max_off_high":25.0,"rank_within":"tier","per_tier":10}},{"key":"leaderboard","title":"Leaderboard","group":"strength","description":"Leaders & laggards per market-cap tier for today / week / month, plus the best long and short tickers for a day trade, a swing and a hold. Always daily bars.","params":{}},{"key":"rs_ranking","title":"RS ranking","group":"strength","description":"Every name in each market-cap tier ranked strongest to weakest, with a verdict vs the benchmark (BTCUSDT for crypto, SPY / NIFTY for stocks). Leader = top half of its tier and ahead of the benchmark over 1M and 3M; Laggard = bottom half and behind over both; 'pulling back' / 'turning up' when rank and recent trend disagree.","params":{"rank_within":"tier","per_tier":25}},{"key":"rs_laggards","title":"RS laggards","group":"strength","description":"RS Rating \u2264 X, trend stack down (close < EMA50 < EMA200), well off the high; crypto: trailing BTCUSDT over both 1M and 3M. RS ranked within each market-cap tier by default, grouped by tier.","params":{"max_rating":20,"min_off_high":25.0,"rank_within":"tier","per_tier":10}}],"markets":[["us","US stocks"],["india","India (NSE)"],["crypto","Crypto"]],"timeframes":["15m","1h","4h","1D","1W"],"tiers":{"us":["Mega","Large","Mid","Small"],"india":["Large","Mid","Small"],"crypto":["Large","Mid","Small","Micro"]},"universe":{"us":{"min_price":5.0,"min_avg_vol":500000,"min_mcap":300000000.0},"india":{"min_price":20.0,"min_avg_vol":100000,"min_mcap":10000000000.0},"crypto":{"min_price":0.0,"min_24h_vol":1000000,"kind":"spot"}},"rows":50,"files":{"us_15m":"2026-10-10T19:03:12+00:00","us_1h":"2026-10-10T19:03:14+00:00","us_4h":"2026-10-10T19:03:16+00:00","us_1D":"2026-10-10T19:03:18+00:00","us_1W":"2026-10-10T19:03:20+00:00","india_15m":"2026-10-10T19:03:23+00:00","india_1h":"2026-10-10T19:03:25+00:00","india_4h":"2026-10-10T19:03:26+00:00","india_1D":"2026-10-10T19:03:28+00:00","india_1W":"2026-10-10T19:03:30+00:00","crypto_15m":"2026-10-10T19:03:36+00:00","crypto_1h":"2026-10-10T19:03:41+00:00","crypto_4h":"2026-10-10T19:03:43+00:00","crypto_1D":"2026-10-10T19:03:45+00:00","crypto_1W":"2026-10-10T19:03:47+00:00"},"snapshot":[{"ticker":"SP:SPX","name":"S&P 500","close":7811.54,"change":0.594692,"update_mode":"delayed_streaming_600"},{"ticker":"NASDAQ:NDX","name":"Nasdaq 100","close":30883.1,"change":0.512072,"update_mode":"delayed_streaming_900"},{"ticker":"DJ:DJI","name":"Dow","close":51654.9,"change":0.826267,"update_mode":"delayed_streaming_600"},{"ticker":"TVC:RUT","name":"Russell 2000","close":2806.98,"change":0.460018,"update_mode":"streaming"},{"ticker":"CBOE:VIX","name":"VIX","close":14.84,"change":-3.6989,"update_mode":"delayed_streaming_900"},{"ticker":"NSE:NIFTY","name":"Nifty 50","close":22520.5,"change":1.29837,"update_mode":"delayed_streaming_900"},{"ticker":"NSE:BANKNIFTY","name":"Bank Nifty","close":55256.7,"change":1.36036,"update_mode":"delayed_streaming_900"},{"ticker":"BITSTAMP:BTCUSD","name":"BTC","close":82949.4,"change":0.467252,"update_mode":"streaming"},{"ticker":"BITSTAMP:ETHUSD","name":"ETH","close":2510.08,"change":0.986092,"update_mode":"streaming"},{"ticker":"COINBASE:SOLUSD","name":"SOL","close":110.17,"change":1.01779,"update_mode":"streaming"},{"ticker":"TVC:DXY","name":"DXY","close":102.232,"change":0.115557,"update_mode":"streaming"},{"ticker":"FX_IDC:USDINR","name":"USD/INR","close":96.78,"change":0.0,"update_mode":"streaming"},{"ticker":"FX:EURUSD","name":"EUR/USD","close":1.11984,"change":-0.111499,"update_mode":"streaming"},{"ticker":"TVC:GOLD","name":"Gold","close":4193.84,"change":1.46309,"update_mode":"streaming"},{"ticker":"NYMEX:CL1!","name":"WTI crude","close":91.85,"change":0.393486,"update_mode":"delayed_streaming_600"},{"ticker":"TVC:US10Y","name":"US 10Y","close":5.242,"change":0.133715,"update_mode":"streaming"}],"base":"https://raw.githubusercontent.com/sujitvarpe/breadth/0f9fa4bde613a14cfd3bf5683481e8ba7c01c16e/","fallback":"https://raw.githubusercontent.com/sujitvarpe/breadth/tvscan-data/"};
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const DASH = '<span class="na">&mdash;</span>';
+const pct = (v, d = 2) => v == null ? DASH : `<span class="${v >= 0 ? 'up' : 'dn'}">${v >= 0 ? '+' : ''}${v.toFixed(d)}%</span>`;
+const num = (v, d = 2) => v == null ? DASH : v.toLocaleString(undefined, {maximumFractionDigits: d});
+const price = (v) => v == null ? DASH : v.toLocaleString(undefined, {maximumSignificantDigits: v < 1 ? 4 : 7});
+const big = (v) => { if (v == null) return DASH; const a = Math.abs(v);
+  return a >= 1e12 ? (v/1e12).toFixed(2)+'T' : a >= 1e9 ? (v/1e9).toFixed(1)+'B' : a >= 1e6 ? (v/1e6).toFixed(1)+'M' : (v/1e3).toFixed(0)+'K'; };
+const chart = (t) => `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(t)}`;
+const link = (t) => `<a class="sym" href="${chart(t)}" target="_blank" rel="noopener">${esc(t.split(':')[1] || t)}</a>`;
+const tierBadge = (t) => t ? `<span class="tier tier-${esc(t)}">${esc(t)}</span>` : '';
+const mode = (m) => { if (!m) return ''; if (m === 'streaming') return 'real-time';
+  const s = /delayed_streaming_([0-9]+)/.exec(m); return s ? `${Math.round(s[1] / 60)}-min delayed` : m; };
+const ago = (iso) => { const m = Math.round((Date.now() - new Date(iso)) / 60000);
+  return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
+const ratingLbl = (v) => { if (v == null) return DASH;
+  const [t, c] = v >= 0.5 ? ['Strong buy', 'up'] : v >= 0.1 ? ['Buy', 'up'] : v > -0.1 ? ['Neutral', 'na'] : v > -0.5 ? ['Sell', 'dn'] : ['Strong sell', 'dn'];
+  return `<span class="${c}">${t}</span>`; };
+
+// state lives in the URL hash so a view can be bookmarked or shared: #us/1D/top_gainers
+const PREF = 'tvScanPage';
+let st = {market: 'us', tf: '1D', scan: 'top_gainers', tier: 'All'};
+let sort = {k: null, asc: false};
+const cache = {};
+try { Object.assign(st, JSON.parse(localStorage.getItem(PREF) || '{}')); } catch (e) {}
+(() => { const [m, tf, s] = location.hash.slice(1).split('/');
+  if (DATA.markets.some(x => x[0] === m)) st.market = m;
+  if (DATA.timeframes.includes(tf)) st.tf = tf;
+  if (DATA.scans.some(x => x.key === s)) st.scan = s;
+  st.tier = 'All'; })();
+
+function save() {
+  try { localStorage.setItem(PREF, JSON.stringify({market: st.market, tf: st.tf, scan: st.scan})); } catch (e) {}
+  history.replaceState(null, '', `#${st.market}/${st.tf}/${st.scan}`);
+}
+function set(patch) {
+  Object.assign(st, patch);
+  if ('market' in patch || 'scan' in patch || 'tf' in patch) { sort = {k: null, asc: false}; if (!('tier' in patch)) st.tier = 'All'; }
+  if (st.scan === 'leaderboard') st.tf = '1D';
+  save(); controls(); load();
+}
+
+function controls() {
+  $('markets').innerHTML = DATA.markets.map(([k, l]) =>
+    `<button class="tab${k === st.market ? ' on' : ''}" role="tab" onclick="set({market:'${k}'})">${esc(l)}</button>`).join('');
+  const daily = st.scan === 'leaderboard';
+  $('tfs').innerHTML = DATA.timeframes.map(t =>
+    `<button class="chip${t === st.tf ? ' on' : ''}"${daily && t !== '1D' ? ' disabled' : ''} onclick="set({tf:'${t}'})">${t}</button>`).join('');
+  let g = null;
+  $('scans').innerHTML = DATA.scans.map(s => {
+    const head = s.group !== g ? `<span class="grp">${esc(g = s.group)}</span>` : '';
+    return head + `<button class="chip${s.key === st.scan ? ' on' : ''}" onclick="set({scan:'${s.key}'})">${esc(s.title)}</button>`;
+  }).join('');
+  const s = DATA.scans.find(x => x.key === st.scan);
+  const settings = Object.entries(s.params).map(([k, v]) => `${k.replace(/_/g, ' ')} ${v}`).join(' · ');
+  $('about').innerHTML = `<b>${esc(s.title)}</b> &mdash; ${esc(s.description)}`
+    + (settings ? `<div class="set">Settings: ${esc(settings)}</div>` : '');
+}
+
+async function load() {
+  const key = `${st.market}_${st.tf}`;
+  if (!(key in DATA.files)) return fail('No stored data for this market and timeframe yet.');
+  if (!cache[key]) {
+    $('meta').textContent = 'Loading…';
+    try {
+      // the exact data commit this page was built with; the branch tip if that commit is gone
+      let r = await fetch(`${DATA.base}${key}.json`).catch(() => null);
+      if (!r || !r.ok) r = await fetch(`${DATA.fallback}${key}.json?t=${Date.now()}`);
+      if (!r.ok) throw new Error(r.status);
+      cache[key] = await r.json();
+    } catch (e) { return fail('Could not load this scan (' + e.message + '). Check the connection and reload.'); }
+  }
+  if (key !== `${st.market}_${st.tf}`) return;      // the user moved on while it loaded
+  const d = cache[key][st.scan];
+  d ? render(d) : fail('This scan was not available at the last publish.');
+}
+
+function fail(msg) {
+  $('board').hidden = true; $('tbl-wrap').hidden = false; $('tiers').innerHTML = ''; $('note').hidden = true; $('meta').textContent = '';
+  $('head').innerHTML = ''; $('body').innerHTML = `<tr><td class="empty">${esc(msg)}</td></tr>`;
+}
+
+const EXTRA = {
+  smart_volume_scanner: ['score', 'Score', v => num(v, 1)],
+  consecutive_candles_scan: ['streak_pct', 'Streak', v => pct(v)],
+  candle_patterns: ['patterns', 'Patterns', v => `<span style="color:hsl(270 80% 78%)">${esc(v)}</span>`],
+  new_highs: ['off_high_pct', 'Off high', v => pct(v)],
+  rs_leaders: ['off_high_pct', 'Off high', v => pct(v)],
+  rs_laggards: ['off_high_pct', 'Off high', v => pct(v)],
+  rs_ranking: ['verdict', 'Verdict', v => { if (!v) return DASH;
+    const c = {'Leader': ['up', '▲'], 'Leader, pulling back': ['up', '▲'], 'Laggard': ['dn', '▼'], 'Laggard, turning up': ['dn', '▼'], 'Mixed': ['na', '◆']}[v] || ['na', ''];
+    return `<span class="${c[0]}" style="font-weight:700">${c[1]} ${esc(v)}</span>`; }],
+  rating_filter: ['bb_rating', 'BB rating', v => v == null ? DASH : (v > 0 ? '+' : '') + v],
+};
+const SIG = {breakout: 'var(--bull)', breakdown: 'var(--bear)', accumulate: 'hsl(212 92% 67%)', squeeze: 'var(--neutral)'};
+const rsCell = (v) => v == null ? DASH : `<b class="${v >= 80 ? 'up' : v <= 20 ? 'dn' : ''}">${v}</b>`;
+
+function render(d) {
+  const isBoard = d.kind === 'leaderboard';
+  const mkt = (DATA.markets.find(m => m[0] === d.market) || [, d.market])[1];
+  const when = DATA.files[`${st.market}_${st.tf}`];
+  $('meta').innerHTML = `<b>${esc(d.title)}</b> · ${esc(mkt)}${d.exchange ? ' ' + esc(d.exchange) : ''} · ${esc(d.timeframe)}`
+    + (isBoard ? ` · <b>${d.universe_size}</b> names` : ` · <b>${d.matched}</b> matches of ${d.universe_size}`)
+    + ` · scanned ${when ? ago(when) : 'earlier (last good copy)'}`
+    + (d.update_mode ? ` · <span class="${d.update_mode === 'streaming' ? 'up' : ''}">${mode(d.update_mode)}</span>` : '')
+    + (d.benchmark_ticker ? ` · RS vs <b>${esc(d.benchmark_ticker)}</b>` : '');
+  $('note').hidden = !d.note; $('note').textContent = d.note || '';
+  $('board').hidden = !isBoard; $('tbl-wrap').hidden = isBoard;
+  if (isBoard) { $('tiers').innerHTML = ''; return renderBoard(d); }
+
+  const cur = d.market === 'india' ? '₹' : '$';
+  const shown = (t) => d.rows.filter(r => r.tier === t).length;
+  $('tiers').innerHTML = `<span class="lbl">Market cap</span>` + ['All', ...(d.tiers || [])].map(t =>
+    `<button class="chip${t === st.tier ? ' on' : ''}" onclick="set({tier:'${t}'})">${t}${t === 'All' ? '' : `<span class="n">${shown(t)}</span>`}</button>`).join('');
+
+  const cols = [
+    ['ticker', 'Symbol', r => link(r.ticker), 1],
+    ['description', 'Name', r => `<div class="nm">${esc(r.description || '')}</div>`, 1],
+    ['close', 'Price', r => price(r.close)],
+    ['change', 'Chg', r => pct(r.change)],
+    ['rel_vol', 'RVol', r => r.rel_vol == null ? DASH : `<span style="${r.rel_vol >= 2 ? 'color:var(--neutral)' : ''}">${r.rel_vol.toFixed(2)}x</span>`],
+    ['rsi', 'RSI', r => num(r.rsi, 0)],
+  ];
+  const ex = EXTRA[d.scan];
+  if (ex) cols.push([ex[0], ex[1], r => ex[2](r[ex[0]]), ex[0] === 'patterns' || ex[0] === 'verdict' ? 1 : 0]);
+  cols.push(
+    ['bbw', 'BBW', r => num(r.bbw, 3)],
+    ['tv_rating', 'TV rating', r => ratingLbl(r.tv_rating), 1],
+    ['perf_w', '1W', r => pct(r.perf_w, 1)],
+    ['perf_1m', '1M', r => pct(r.perf_1m, 1)],
+    ...(d.market === 'crypto'
+      ? [['rs_btc', 'RS vs BTC', r => r.rs_btc == null ? DASH : `<b>${pct(r.rs_btc, 1)}</b>`]]
+      : [['rs_rating', 'RS Rtg', r => rsCell(r.rs_rating)], ['rs_tier', 'RS in tier', r => rsCell(r.rs_tier)]]),
+    ['rs_1m', `1M vs ${esc(d.benchmark || '')}`, r => pct(r.rs_1m, 1)],
+    ['rs_3m', `3M vs ${esc(d.benchmark || '')}`, r => pct(r.rs_3m, 1)],
+    ['mcap', 'Mkt cap', r => r.mcap == null ? DASH : cur + big(r.mcap)],
+    ['tier', 'Tier', r => tierBadge(r.tier) || DASH, 1],
+  );
+  if (d.market === 'crypto') cols.push(['dollar_vol', '24h vol', r => '$' + big(r.dollar_vol)]);
+  else cols.push(['sector', 'Sector', r => `<span class="nm">${esc(r.sector || '')}</span>`, 1]);
+  cols.push(['signal', 'Signal', r => r.signal ? `<span class="sig" style="color:${SIG[r.signal]}">${r.signal}</span>` : '', 1]);
+
+  $('head').innerHTML = cols.map(([k, lbl, , left]) =>
+    `<th class="${left ? 'l' : ''}${sort.k === k ? ' sorted' : ''}" onclick="sortBy('${k}')">${lbl}${sort.k === k ? (sort.asc ? ' ▲' : ' ▼') : ''}</th>`).join('');
+  let rows = d.rows.filter(r => st.tier === 'All' || r.tier === st.tier);
+  if (sort.k) {
+    const k = sort.k, s = sort.asc ? 1 : -1;
+    rows.sort((a, b) => { const x = a[k], y = b[k];
+      if (x == null) return 1; if (y == null) return -1;
+      return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y))) * s; });
+  }
+  // RS scans come grouped by cap tier; keep the groups unless the reader re-sorts
+  const grouped = d.grouped_by_tier && !sort.k;
+  let last = null;
+  const tierHead = (r) => { if (!grouped || r.tier === last) return ''; last = r.tier;
+    const n = (d.tier_counts || {})[r.tier];
+    return `<tr class="tierhead"><td colspan="${cols.length}">${tierBadge(r.tier) || 'No tier'} <span class="na" style="font-size:11px">${n ?? ''} match${n === 1 ? '' : 'es'}</span></td></tr>`; };
+  const none = st.tier !== 'All' && d.rows.length
+    ? `None of the top ${d.rows.length} shown are ${st.tier}-cap.` : 'No matches at the last publish.';
+  $('body').innerHTML = rows.length
+    ? rows.map(r => tierHead(r) + '<tr>' + cols.map(([, , f, left]) => `<td class="${left ? 'l' : ''}">${f(r)}</td>`).join('') + '</tr>').join('')
+    : `<tr><td class="empty" colspan="${cols.length}">${none}</td></tr>`;
+}
+
+function sortBy(k) { sort = {k, asc: sort.k === k ? !sort.asc : false}; load(); }
+
+function renderBoard(d) {
+  const vsB = d.board_vs_benchmark;
+  const mini = (list, cls) => `<div class="lb-list mono">${list.map(x =>
+    `<span>${link(x.ticker)}</span><span style="text-align:right" class="${vsB ? (x.pct > 0 ? 'up' : x.pct < 0 ? 'dn' : '') : cls}">${x.pct == null ? '' : (x.pct >= 0 ? '+' : '') + x.pct.toFixed(1) + '%'}</span>`).join('')}</div>`;
+  let html = `<div class="lb-h">Leaders &amp; laggards by market cap</div>
+    <div class="lb-sub">${vsB
+      ? `Each coin's return <b>minus ${esc(d.benchmark_ticker || 'BTCUSDT')}</b>: green beat BTC, red trailed it. Top and bottom 5 per tier.`
+      : 'Top and bottom 5 by return in each tier.'} Tap a ticker for its chart.</div>
+    <div style="overflow-x:auto"><table class="lb-grid"><thead><tr><th>Tier</th><th>Today</th><th>This week</th><th>This month</th></tr></thead><tbody>`;
+  for (const b of d.board)
+    html += `<tr><td>${tierBadge(b.tier)}<div class="na" style="font-size:10.5px;margin-top:4px">${b.n} names</div></td>`
+      + ['day', 'week', 'month'].map(h => `<td><div class="lb-pair"><div>${mini(b[h].leaders, 'up')}</div><div>${mini(b[h].laggards, 'dn')}</div></div></td>`).join('') + '</tr>';
+  html += '</tbody></table></div>';
+
+  const x1 = v => v == null ? DASH : v.toFixed(1);
+  const COLS = d.market === 'crypto' ? {
+    day:   [['vs_d', 'vs BTC today', v => pct(v, 1)], ['change', 'Today', v => pct(v, 1)], ['rel_vol', 'RVol', v => v == null ? DASH : v.toFixed(1) + 'x'], ['atr_pct', 'ATR', v => v == null ? DASH : v.toFixed(1) + '%']],
+    swing: [['vs_w', 'vs BTC 1W', v => pct(v, 1)], ['rs_1m', 'vs BTC 1M', v => pct(v, 1)], ['rsi', 'RSI', v => num(v, 0)], ['ext20', 'Ext', x1]],
+    hold:  [['rs_btc', 'RS vs BTC', v => pct(v, 1)], ['rs_1m', '1M', v => pct(v, 1)], ['rs_3m', '3M', v => pct(v, 1)], ['rs_6m', '6M', v => pct(v, 1)]],
+  } : {
+    day:   [['change', 'Today', v => pct(v, 1)], ['rel_vol', 'RVol', v => v == null ? DASH : v.toFixed(1) + 'x'], ['rs_d', 'RS d', v => num(v, 0)], ['atr_pct', 'ATR', v => v == null ? DASH : v.toFixed(1) + '%']],
+    swing: [['perf_w', '1W', v => pct(v, 1)], ['perf_1m', '1M', v => pct(v, 1)], ['rs_rating', 'RS', v => num(v, 0)], ['rsi', 'RSI', v => num(v, 0)], ['ext20', 'Ext', x1]],
+    hold:  [['rs_rating', 'RS', v => num(v, 0)], ['perf_1m', '1M', v => pct(v, 1)], ['rs_1m', 'vs ' + (d.benchmark || ''), v => pct(v, 1)], ['off_high_pct', 'Off high', v => pct(v, 1)]],
+  };
+  const list = (rows, h) => rows.length
+    ? `<table class="lb-t mono"><tr class="hd"><td class="l"></td>${COLS[h].map(c => `<td>${esc(c[1])}</td>`).join('')}</tr>`
+      + rows.map(r => `<tr><td class="l">${link(r.ticker)} ${tierBadge(r.tier)}</td>${COLS[h].map(([k, , f]) => `<td>${f(r[k])}</td>`).join('')}</tr>`).join('') + '</table>'
+    : '<div class="na" style="font-size:11.5px">Nothing qualifies right now.</div>';
+  html += `<div class="lb-h">Best tickers by holding period</div>
+    <div class="lb-sub">Screening rules, strongest first. A shortlist to check charts against, not tested signals.</div><div class="lb-cards">`;
+  for (const h of ['day', 'swing', 'hold'].filter(k => d.ideas[k])) {
+    const v = d.ideas[h];
+    html += `<div class="lb-card"><h4>${esc(v.title)}<span class="hz">${esc(v.horizon)}</span></h4>
+      <div class="lb-side up">▲ Long · ${v.counts.long} qualify</div><div class="lb-rule">${esc(v.long)}</div>${list(v.long_rows, h)}
+      <div class="lb-side dn">▼ Short · ${v.counts.short} qualify</div><div class="lb-rule">${esc(v.short)}</div>${list(v.short_rows, h)}
+    </div>`;
+  }
+  $('board').innerHTML = html + '</div>';
+}
+
+$('tape').innerHTML = DATA.snapshot.map(r =>
+  `<a href="${chart(r.ticker)}" target="_blank" rel="noopener" title="${esc(mode(r.update_mode))}"><span class="n">${esc(r.name)}</span>${price(r.close)} ${pct(r.change)}</a>`).join('')
+  || '<span class="na">market snapshot unavailable</span>';
+$('hdr-updated').innerHTML = `updated <b>${new Date(DATA.built).toLocaleString(undefined, {dateStyle: 'medium', timeStyle: 'short'})}</b>`;
+$('u-us-p').textContent = DATA.universe.us.min_price;
+$('u-us-m').textContent = DATA.universe.us.min_mcap / 1e6;
+$('u-in-m').textContent = (DATA.universe.india.min_mcap / 1e7).toLocaleString();
+$('u-cr-v').textContent = DATA.universe.crypto.min_24h_vol / 1e6;
+document.addEventListener('click', (e) => { const b = $('brand'); if (b.open && !b.contains(e.target)) b.open = false; });
+save(); controls(); load();
+</script>
+
+</body>
+</html>
